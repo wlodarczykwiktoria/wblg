@@ -284,7 +284,7 @@ export class PuzzleView extends React.Component<Props, State> {
         maxW="5xl"
         mx="auto"
       >
-        <Stack spacing={4}>
+        <Stack>
           <Flex
             justify="right"
             align="center"

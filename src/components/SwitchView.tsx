@@ -363,7 +363,7 @@ export class SwitchView extends React.Component<Props, State> {
         maxW="5xl"
         mx="auto"
       >
-        <Stack spacing={4}>
+        <Stack>
           {/* Górny pasek jak w Spellcheck */}
           <Flex
             justify="right"

@@ -42,7 +42,7 @@ export const GAME_META: GameMeta[] = [
   },
   {
     id: 3,
-    type: 'crossout',
+    type: GameCode.Crossout,
     title: {
       pl: 'Przekreśl zbędne',
       en: 'Cross out extras',
@@ -54,7 +54,7 @@ export const GAME_META: GameMeta[] = [
   },
   {
     id: 4,
-    type: 'anagram',
+    type: GameCode.Anagram,
     title: {
       pl: 'Anagramy',
       en: 'Anagrams',
@@ -66,7 +66,7 @@ export const GAME_META: GameMeta[] = [
   },
   {
     id: 5,
-    type: 'switch',
+    type: GameCode.Switch,
     title: {
       pl: 'Zamienione słowa',
       en: 'Swapped words',

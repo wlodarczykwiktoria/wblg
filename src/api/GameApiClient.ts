@@ -6,7 +6,6 @@ import type {
   SpellcheckResponse,
   GameAnswerRequest,
   ResultResponse,
-  ResultRequest,
   FillGapsRiddlePart,
   RiddleOption,
   SpellcheckRiddle,
@@ -106,15 +105,7 @@ function buildSpellcheckRiddleFromBase(): SpellcheckResponse {
   };
 }
 
-const API_BASE = '/api';
-
 export class GameApiClient {
-  private readonly baseUrl: string;
-
-  constructor(baseUrl: string = API_BASE) {
-    this.baseUrl = baseUrl;
-  }
-
   async startGame(request: GameRequest & { gameType: 'fill-gaps' }): Promise<FillGapsResponse>;
   async startGame(request: GameRequest & { gameType: 'spellcheck' }): Promise<SpellcheckResponse>;
   async startGame(request: GameRequest): Promise<FillGapsResponse | SpellcheckResponse>;
@@ -150,7 +141,7 @@ export class GameApiClient {
     }
   }
 
-  async getResult(request: ResultRequest): Promise<ResultResponse> {
+  async getResult(): Promise<ResultResponse> {
     return {
       score: 88,
       mistakes: 3,

@@ -26,7 +26,6 @@ export class HomeView extends React.Component<Props> {
 
         <Stack
           direction={{ base: 'column', md: 'row' }}
-          spacing={4}
           justify="center"
         >
           <Button

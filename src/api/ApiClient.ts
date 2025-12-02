@@ -14,7 +14,7 @@ import type {
 } from './types';
 import { GameCode } from './types';
 
-import type { AnagramRiddle, CrossoutRiddle, GameType, SpellcheckRiddle } from './modelV2';
+import type { AnagramRiddle, CrossoutRiddle, SpellcheckRiddle, SwitchRiddle } from './modelV2';
 import { anagramMockResponse, crossoutMockResponse, spellcheckMockResponse, switchMockResponse } from './mockExamples';
 
 // ---- MOCK DANYCH ----
@@ -236,7 +236,7 @@ export class ApiClient {
     return Promise.resolve(extracts);
   }
 
-  async createLevel(extractId: number, type: string): Promise<Level> {
+  async createLevel(_extractId: number, type: string): Promise<Level> {
     return Promise.resolve({ levelId: 1, type });
   }
 
@@ -275,7 +275,7 @@ export class ApiClient {
 
     return Promise.resolve({
       correct: true,
-      explanation: 'Mock: odpowiedź przyjęta 👍',
+      explanation: 'Mock: odpowiedź przyjęta',
     });
   }
 
@@ -297,17 +297,17 @@ export class ApiClient {
     ]);
   }
 
-  async fetchChapterConfig(bookId: number, chapterIndex: number, gameType: GameType): Promise<void> {
+  async fetchChapterConfig(bookId: number, chapterIndex: number, gameCode: GameCode): Promise<void> {
     if (!this.baseUrl) {
       console.log('fetchChapterConfig mock:', {
         bookId,
         chapterIndex,
-        gameType,
+        gameCode,
       });
       return Promise.resolve();
     }
 
-    const url = `${this.baseUrl}/chapter-config?bookId=${bookId}&chapter=${chapterIndex}&game=${gameType}`;
+    const url = `${this.baseUrl}/chapter-config?bookId=${bookId}&chapter=${chapterIndex}&game=${gameCode}`;
     try {
       await fetch(url, { method: 'GET' });
     } catch (e) {

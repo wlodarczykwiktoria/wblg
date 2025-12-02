@@ -1,7 +1,7 @@
 // src/components/ProgressView.tsx
 
 import React from 'react';
-import { Box, Button, Flex, Heading, SimpleGrid, Text } from '@chakra-ui/react';
+import { Box, Button, Heading, SimpleGrid, Text } from '@chakra-ui/react';
 import type { Book } from '../api/types';
 import type { Language } from '../i18n';
 import { translations } from '../i18n';
@@ -139,7 +139,7 @@ export class ProgressView extends React.Component<Props, State> {
   }
 
   render() {
-    const { language, onBack } = this.props;
+    const { language } = this.props;
     const { selectedBookId } = this.state;
     const t = translations[language];
 

@@ -26,10 +26,7 @@ export const CrossoutGame: React.FC<Props> = ({ riddle, selectedLineId, onSelect
         px={10}
         py={8}
       >
-        <VStack
-          align="stretch"
-          spacing={2}
-        >
+        <VStack align="stretch">
           {lines.map((line) => {
             const selected = line.id === selectedLineId;
 

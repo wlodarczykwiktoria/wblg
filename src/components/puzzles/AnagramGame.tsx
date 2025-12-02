@@ -48,10 +48,7 @@ export const AnagramGame: React.FC<Props> = ({ riddle, selectedWordIds, onToggle
         px={10}
         py={8}
       >
-        <VStack
-          align="flex-start"
-          spacing={1}
-        >
+        <VStack align="flex-start">
           {lines.map((line, lineIdx) => (
             <Text
               key={lineIdx}

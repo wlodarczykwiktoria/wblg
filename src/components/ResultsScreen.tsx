@@ -122,10 +122,7 @@ export class ResultsScreen extends React.Component<Props> {
               {t.performanceBreakdownLabel}
             </Text>
 
-            <SimpleGrid
-              columns={{ base: 2, md: 4 }}
-              spacing={4}
-            >
+            <SimpleGrid columns={{ base: 2, md: 4 }}>
               <Box
                 borderRadius="xl"
                 bg="green.50"

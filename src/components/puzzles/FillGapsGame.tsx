@@ -102,10 +102,7 @@ export class FillGapsGame extends React.Component<Props, State> {
     const t = translations[this.props.language];
 
     return (
-      <VStack
-        align="stretch"
-        spacing={8}
-      >
+      <VStack align="stretch">
         {/* Tekst z lukami */}
         <Box
           bg="white"
@@ -167,7 +164,7 @@ export class FillGapsGame extends React.Component<Props, State> {
           >
             {t.chooseWordsLabel}
           </Text>
-          <Wrap spacing={3}>
+          <Wrap>
             {availableOptions.map((opt) => (
               <WrapItem key={opt.id}>
                 <Box

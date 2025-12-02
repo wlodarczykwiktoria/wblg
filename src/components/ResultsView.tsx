@@ -54,16 +54,13 @@ export class ResultsView extends React.Component<Props, State> {
 
         {loading && <Spinner />}
 
-        <List
-          spacing={2}
-          mb={4}
-        >
+        <List.Root mb={4}>
           {results.map((r) => (
             <ListItem key={r.extractId}>
               Fragment {r.extractId}: najlepszy wynik {r.bestScore}
             </ListItem>
           ))}
-        </List>
+        </List.Root>
 
         <Button onClick={this.props.onBackToLibrary}>Powrót do biblioteki</Button>
       </Box>

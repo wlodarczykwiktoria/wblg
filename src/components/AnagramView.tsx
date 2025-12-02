@@ -33,7 +33,7 @@ type State = {
 };
 
 // W mocku wiemy, że anagramami są słowa o id 'w2' i 'w7'
-const CORRECT_ANAGRAM_IDS_PER_PUZZLE = ['w2', 'w7'] as const;
+const CORRECT_ANAGRAM_IDS_PER_PUZZLE = ['w2', 'w7'];
 
 export class AnagramView extends React.Component<Props, State> {
   private timerId: number | null = null;
@@ -284,7 +284,7 @@ export class AnagramView extends React.Component<Props, State> {
         maxW="5xl"
         mx="auto"
       >
-        <Stack spacing={4}>
+        <Stack>
           {/* Górny pasek: Back + Pauza */}
           <Flex
             justify="right"

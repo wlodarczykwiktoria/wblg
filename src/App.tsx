@@ -426,13 +426,18 @@ export class App extends React.Component<unknown, AppState> {
               <NativeSelect.Root
                 size="sm"
                 width="120px"
-                value={language}
-                onChange={(event) => this.handleLanguageChange(event.target.value as Language)}
               >
-                <NativeSelect.Field>
-                  <option value="en">English</option>
+                <NativeSelect.Field
+                  value={language}
+                  onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
+                    this.handleLanguageChange(event.target.value as Language)
+                  }
+                >
                   <option value="pl">Polski</option>
+                  <option value="en">English</option>
                 </NativeSelect.Field>
+
+                <NativeSelect.Indicator />
               </NativeSelect.Root>
             </Flex>
           </Box>

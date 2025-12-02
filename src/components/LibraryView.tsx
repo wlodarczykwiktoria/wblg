@@ -20,7 +20,7 @@ export class LibraryView extends React.Component<Props, State> {
     super(props);
     this.state = {
       loading: false,
-      books: [{ id: 5, title: 'string;', author: 'string;' }],
+      books: [],
       extracts: [],
       searchQuery: '',
     };
@@ -37,7 +37,6 @@ export class LibraryView extends React.Component<Props, State> {
   async showBooks(): Promise<void> {
     this.setState({ loading: true });
     const books = await this.props.apiClient.getBooks();
-    this.setState({ books: [{ id: 5, title: 'string;', author: 'string;' }], loading: false });
 
     if (books.length > 0) {
       const extracts = await this.props.apiClient.getExtracts(books[0].id);
@@ -48,13 +47,13 @@ export class LibraryView extends React.Component<Props, State> {
   search(q: string): void {
     this.setState({ searchQuery: q });
   }
-  s;
+
   selectExtract(id: number): void {
     this.props.onSelectExtract(id);
   }
 
   render() {
-    const { loading, books, extracts, searchQuery } = this.state;
+    const { books, extracts } = this.state;
 
     return (
       <Box>

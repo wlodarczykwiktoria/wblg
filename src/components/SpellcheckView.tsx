@@ -294,7 +294,7 @@ export class SpellcheckView extends React.Component<Props, State> {
         maxW="5xl"
         mx="auto"
       >
-        <Stack spacing={4}>
+        <Stack>
           {/* Górny pasek: Back + Pauza */}
           <Flex
             justify="right"
