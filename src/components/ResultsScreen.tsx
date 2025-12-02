@@ -1,0 +1,220 @@
+// src/components/ResultsScreen.tsx
+
+import React from 'react';
+import { Box, Button, Flex, Heading, SimpleGrid, Text } from '@chakra-ui/react';
+import type { GameResults } from '../gameTypes';
+import type { Language } from '../i18n';
+import { translations } from '../i18n';
+
+type Props = {
+  language: Language;
+  results: GameResults;
+  onPlayAgain(): void;
+  onNextExtract(): void;
+  onBackToLibrary(): void;
+};
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  const mm = m.toString();
+  const ss = s.toString().padStart(2, '0');
+  return `${mm}:${ss}`;
+}
+
+export class ResultsScreen extends React.Component<Props> {
+  render() {
+    const { results, language } = this.props;
+    const t = translations[language];
+
+    const accuracyPercent = Math.round(results.accuracy * 100);
+    const score = results.score;
+    const mistakes = results.totalMistakes;
+    const timeText = formatTime(results.timeSeconds);
+    const pagesCompleted = `${results.completedPuzzles}/${results.totalPuzzles}`;
+
+    return (
+      <Box
+        maxW="3xl"
+        mx="auto"
+        mt={8}
+        mb={12}
+        bg="white"
+        borderRadius="2xl"
+        boxShadow="lg"
+        p={10}
+        textAlign="center"
+      >
+        <Box textAlign="center">
+          <Heading
+            size="lg"
+            mb={2}
+          >
+            {t.resultsTitle}
+          </Heading>
+          <Text
+            mb={8}
+            color="gray.600"
+          >
+            {t.resultsSubtitle}
+          </Text>
+
+          {/* Final score card */}
+          <Box
+            mx="auto"
+            maxW="lg"
+            borderWidth="1px"
+            borderRadius="2xl"
+            p={6}
+            mb={8}
+          >
+            <Text
+              fontSize="xs"
+              textTransform="uppercase"
+              letterSpacing="wide"
+              color="gray.500"
+              mb={2}
+            >
+              {t.finalScoreLabel}
+            </Text>
+            <Heading
+              size="2xl"
+              color="green.500"
+            >
+              {score}
+            </Heading>
+            <Text
+              color="gray.600"
+              mb={4}
+            >
+              {t.outOfPointsLabel}
+            </Text>
+
+            {/* prosty pasek postępu */}
+            <Box
+              h="3"
+              borderRadius="full"
+              bg="gray.100"
+              overflow="hidden"
+            >
+              <Box
+                h="100%"
+                width={`${score}%`}
+                bg="green.400"
+              />
+            </Box>
+          </Box>
+
+          {/* Breakdown */}
+          <Box
+            mx="auto"
+            maxW="xl"
+            borderWidth="1px"
+            borderRadius="2xl"
+            p={6}
+            mb={8}
+          >
+            <Text
+              fontSize="sm"
+              fontWeight="semibold"
+              mb={4}
+            >
+              {t.performanceBreakdownLabel}
+            </Text>
+
+            <SimpleGrid
+              columns={{ base: 2, md: 4 }}
+              spacing={4}
+            >
+              <Box
+                borderRadius="xl"
+                bg="green.50"
+                p={4}
+                boxShadow="sm"
+              >
+                <Text
+                  fontSize="xs"
+                  color="gray.500"
+                >
+                  {t.accuracyLabel}
+                </Text>
+                <Heading size="md">{accuracyPercent}%</Heading>
+              </Box>
+
+              <Box
+                borderRadius="xl"
+                bg="blue.50"
+                p={4}
+                boxShadow="sm"
+              >
+                <Text
+                  fontSize="xs"
+                  color="gray.500"
+                >
+                  {t.timeTakenLabel}
+                </Text>
+                <Heading size="md">{timeText}</Heading>
+              </Box>
+
+              <Box
+                borderRadius="xl"
+                bg="orange.50"
+                p={4}
+                boxShadow="sm"
+              >
+                <Text
+                  fontSize="xs"
+                  color="gray.500"
+                >
+                  {t.mistakesLabel}
+                </Text>
+                <Heading size="md">{mistakes}</Heading>
+              </Box>
+
+              <Box
+                borderRadius="xl"
+                bg="purple.50"
+                p={4}
+                boxShadow="sm"
+              >
+                <Text
+                  fontSize="xs"
+                  color="gray.500"
+                >
+                  {t.pagesCompletedLabel}
+                </Text>
+                <Heading size="md">{pagesCompleted}</Heading>
+              </Box>
+            </SimpleGrid>
+          </Box>
+
+          {/* Buttons */}
+          <Flex
+            justify="center"
+            gap={3}
+            flexWrap="wrap"
+          >
+            <Button
+              colorScheme="green"
+              onClick={this.props.onPlayAgain}
+            >
+              {t.playAgainLabel}
+            </Button>
+            <Button
+              colorScheme="blue"
+              onClick={this.props.onNextExtract}
+            >
+              {t.nextExtractLabel}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={this.props.onBackToLibrary}
+            >
+              {t.backToLibraryLabel}
+            </Button>
+          </Flex>
+        </Box>
+      </Box>
+    );
+  }
+}
