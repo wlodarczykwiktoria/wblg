@@ -373,6 +373,19 @@ export class App extends React.Component<unknown, AppState> {
           />
         );
       }
+
+      if (selectedGameType === 'choice') {
+        return (
+            <ChoiceView
+                apiClient={this.apiClient}
+                extractId={selectedExtractId}
+                type={selectedGameType}
+                language={language}
+                onBackToHome={this.handleBackToHome}
+                onFinishLevel={this.handleFinishLevel}
+            />
+        );
+      }
     }
 
     if (route === 'results' && results) {
@@ -383,19 +396,6 @@ export class App extends React.Component<unknown, AppState> {
           onPlayAgain={this.handlePlayAgain}
           onNextExtract={this.handleNextExtract}
           onBackToLibrary={this.handleBackToLibraryFromResults}
-        />
-      );
-    }
-
-    if (selectedGameType === 'choice') {
-      return (
-        <ChoiceView
-          apiClient={this.apiClient}
-          extractId={selectedExtractId}
-          type={selectedGameType}
-          language={language}
-          onBackToHome={this.handleBackToHome}
-          onFinishLevel={this.handleFinishLevel}
         />
       );
     }
