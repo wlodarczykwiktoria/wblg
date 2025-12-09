@@ -1,4 +1,4 @@
-// src/components/BookSelectionView.tsx
+// src/components/BookSelectionView.test.tsx
 
 import React from 'react';
 import { Box, Button, Flex, Heading, Input, Spinner, Text } from '@chakra-ui/react';
@@ -28,7 +28,7 @@ type State = {
   sortColumn: SortColumn;
   sortDirection: SortDirection;
   selectedBookId: number | null;
-  showStartOverConfirm: boolean;
+  showstartGameConfirm: boolean;
   pageSize: number;
   currentPage: number;
 
@@ -56,7 +56,7 @@ export class BookSelectionView extends React.Component<Props, State> {
       sortColumn: 'title',
       sortDirection: 'asc',
       selectedBookId: null,
-      showStartOverConfirm: false,
+      showstartGameConfirm: false,
       pageSize: 5,
       currentPage: 1,
 
@@ -76,7 +76,7 @@ export class BookSelectionView extends React.Component<Props, State> {
     this.handleSearchChange = this.handleSearchChange.bind(this);
     this.handleSortClick = this.handleSortClick.bind(this);
     this.handleRowClick = this.handleRowClick.bind(this);
-    this.handleStartOverClick = this.handleStartOverClick.bind(this);
+    this.handlestartGameClick = this.handlestartGameClick.bind(this);
     this.handleChooseChapterClick = this.handleChooseChapterClick.bind(this);
     this.handlePageSizeChange = this.handlePageSizeChange.bind(this);
     this.handlePageChange = this.handlePageChange.bind(this);
@@ -115,18 +115,27 @@ export class BookSelectionView extends React.Component<Props, State> {
     this.setState({ selectedBookId: book.id });
   }
 
-  handleStartOverClick(): void {
+  handlestartGameClick(): void {
     const { selectedBookId } = this.state;
     if (selectedBookId === null) return;
+
+    const book = this.props.books.find((b) => b.id === selectedBookId);
+    const chapterCount = book?.chapters ?? 0;
 
     const bookProgress = this.props.progress.find((bp) => bp.bookId === selectedBookId);
     const completedCount = bookProgress?.chapters.filter((c) => c.completed).length ?? 0;
 
-    if (completedCount > 0) {
-      this.setState({ showStartOverConfirm: true });
-    } else {
-      this.props.onBookSelected(selectedBookId, 0);
+    let nextChapterIndex = 0;
+
+    if (chapterCount > 0) {
+      nextChapterIndex = completedCount;
+
+      if (nextChapterIndex >= chapterCount) {
+        nextChapterIndex = chapterCount - 1;
+      }
     }
+
+    this.props.onBookSelected(selectedBookId, nextChapterIndex);
   }
 
   handleChooseChapterClick(): void {
@@ -304,7 +313,13 @@ export class BookSelectionView extends React.Component<Props, State> {
   confirmChapterChoice(): void {
     const { selectedBookId, chapterModalSelectedIndex } = this.state;
     if (selectedBookId === null) return;
-    this.props.onBookSelected(selectedBookId, chapterModalSelectedIndex);
+
+    const bookProgress = this.props.progress.find((bp) => bp.bookId === selectedBookId);
+    const completedCount = bookProgress?.chapters.filter((c) => c.completed).length ?? 0;
+
+    const safeIndex = chapterModalSelectedIndex > completedCount ? completedCount : chapterModalSelectedIndex;
+
+    this.props.onBookSelected(selectedBookId, safeIndex);
     this.setState({ chapterModalOpen: false });
   }
 
@@ -312,7 +327,7 @@ export class BookSelectionView extends React.Component<Props, State> {
     const {
       searchQuery,
       selectedBookId,
-      showStartOverConfirm,
+      showstartGameConfirm,
       pageSize,
       currentPage,
       filterModalOpen,
@@ -340,6 +355,7 @@ export class BookSelectionView extends React.Component<Props, State> {
 
     const selectedBook = this.props.books.find((b) => b.id === selectedBookId);
     const selectedBookProgress = progress.find((bp) => bp.bookId === selectedBookId);
+    const completedForSelected = selectedBookProgress?.chapters.filter((c) => c.completed).length ?? 0;
     const chapterCount = selectedBook?.chapters ?? 0;
 
     return (
@@ -363,7 +379,6 @@ export class BookSelectionView extends React.Component<Props, State> {
           ← {t.back}
         </Button>
 
-        {/* Search + Filter button */}
         <Flex
           mb={4}
           gap={2}
@@ -380,14 +395,12 @@ export class BookSelectionView extends React.Component<Props, State> {
 
         {booksLoading && <Spinner />}
 
-        {/* Wiersze */}
         <Box
           borderWidth="1px"
           borderRadius="xl"
           overflow="hidden"
           bg="white"
         >
-          {/* Nagłówki kolumn */}
           <Box
             display="flex"
             px={4}
@@ -423,7 +436,6 @@ export class BookSelectionView extends React.Component<Props, State> {
             </Box>
           </Box>
 
-          {/* Scrollowalne wiersze */}
           <Box
             minH="260px"
             maxH="500px"
@@ -474,7 +486,6 @@ export class BookSelectionView extends React.Component<Props, State> {
 
         {!booksLoading && totalBooks === 0 && <Text mt={4}>{t.noBooksFiltered}</Text>}
 
-        {/* Paginacja */}
         {totalBooks > 0 && (
           <Flex
             mt={4}
@@ -533,7 +544,6 @@ export class BookSelectionView extends React.Component<Props, State> {
           </Flex>
         )}
 
-        {/* Pływające przyciski Start over / Choose chapter */}
         {selectedBookId !== null && (
           <Box
             position="fixed"
@@ -553,9 +563,9 @@ export class BookSelectionView extends React.Component<Props, State> {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={this.handleStartOverClick}
+                onClick={this.handlestartGameClick}
               >
-                {t.startOverLabel}
+                {t.startGameLabel}
               </Button>
               <Button
                 size="sm"
@@ -568,8 +578,7 @@ export class BookSelectionView extends React.Component<Props, State> {
           </Box>
         )}
 
-        {/* Start over confirm modal */}
-        {showStartOverConfirm && (
+        {showstartGameConfirm && (
           <Box
             position="fixed"
             inset={0}
@@ -596,7 +605,7 @@ export class BookSelectionView extends React.Component<Props, State> {
                   position="absolute"
                   right={2}
                   top={2}
-                  onClick={() => this.setState({ showStartOverConfirm: false })}
+                  onClick={() => this.setState({ showstartGameConfirm: false })}
                 >
                   ✕
                 </Button>
@@ -604,18 +613,18 @@ export class BookSelectionView extends React.Component<Props, State> {
                   size="md"
                   mb={3}
                 >
-                  {t.startOverConfirmTitle}
+                  {t.startGameConfirmTitle}
                 </Heading>
-                <Text mb={6}>{t.startOverConfirmMessage}</Text>
+                <Text mb={6}>{t.startGameConfirmMessage}</Text>
                 <Flex
                   justify="flex-end"
                   gap={3}
                 >
                   <Button
                     variant="outline"
-                    onClick={() => this.setState({ showStartOverConfirm: false })}
+                    onClick={() => this.setState({ showstartGameConfirm: false })}
                   >
-                    {t.startOverConfirmNo}
+                    {t.startGameConfirmNo}
                   </Button>
                   <Button
                     colorScheme="blue"
@@ -625,10 +634,10 @@ export class BookSelectionView extends React.Component<Props, State> {
                         this.props.onResetBookProgress(id);
                         this.props.onBookSelected(id, 0);
                       }
-                      this.setState({ showStartOverConfirm: false });
+                      this.setState({ showstartGameConfirm: false });
                     }}
                   >
-                    {t.startOverConfirmYes}
+                    {t.startGameConfirmYes}
                   </Button>
                 </Flex>
               </Box>
@@ -636,7 +645,6 @@ export class BookSelectionView extends React.Component<Props, State> {
           </Box>
         )}
 
-        {/* Filter modal */}
         {filterModalOpen && (
           <Box
             position="fixed"
@@ -675,7 +683,6 @@ export class BookSelectionView extends React.Component<Props, State> {
                   {this.props.language === 'pl' ? 'Filtry' : 'Filters'}
                 </Heading>
 
-                {/* Autorzy */}
                 <Box mb={4}>
                   <Text
                     fontSize="sm"
@@ -709,7 +716,6 @@ export class BookSelectionView extends React.Component<Props, State> {
                   </Flex>
                 </Box>
 
-                {/* Gatunki */}
                 <Box mb={4}>
                   <Text
                     fontSize="sm"
@@ -743,7 +749,6 @@ export class BookSelectionView extends React.Component<Props, State> {
                   </Flex>
                 </Box>
 
-                {/* Rok – dwa slidery: od / do */}
                 <Box mb={6}>
                   <Text
                     fontSize="sm"
@@ -850,7 +855,6 @@ export class BookSelectionView extends React.Component<Props, State> {
           </Box>
         )}
 
-        {/* Chapter select modal */}
         {chapterModalOpen && selectedBook && (
           <Box
             position="fixed"
@@ -913,14 +917,19 @@ export class BookSelectionView extends React.Component<Props, State> {
                   {Array.from({ length: chapterCount }).map((_, index) => {
                     const cp = selectedBookProgress?.chapters[index];
                     const completed = cp?.completed ?? false;
+
                     const label =
                       this.props.language === 'pl'
                         ? `Rozdział ${index + 1}${completed ? ' (ukończony)' : ''}`
                         : `Chapter ${index + 1}${completed ? ' (completed)' : ''}`;
+
+                    const isUnlocked = index <= completedForSelected;
+
                     return (
                       <option
                         key={index}
                         value={index}
+                        disabled={!isUnlocked}
                       >
                         {label}
                       </option>

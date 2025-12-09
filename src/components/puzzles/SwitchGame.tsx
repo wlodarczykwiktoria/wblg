@@ -73,6 +73,7 @@ export const SwitchGame: React.FC<Props> = ({ riddle, selectedPairs, openWordId,
             >
               {line.map((w, indexInLine) => {
                 const wordIndex = globalIndex++;
+                const isLastWord = wordIndex === words.length - 1;
 
                 const pairNumber = pairsByWordId[w.id];
                 const pairIdx = pairNumber ? pairNumber - 1 : null;
@@ -83,18 +84,27 @@ export const SwitchGame: React.FC<Props> = ({ riddle, selectedPairs, openWordId,
 
                 const bg = isInPair ? colorCfg?.bg : isOpen ? 'gray.100' : 'transparent';
 
+                const asElement: React.ElementType = isLastWord ? 'span' : 'button';
+
                 return (
                   <React.Fragment key={w.id}>
                     <Box
-                      as="button"
+                      as={asElement}
                       position="relative"
-                      onClick={() => onWordClick(w.id, wordIndex)}
+                      onClick={
+                        isLastWord
+                          ? undefined
+                          : () => {
+                              onWordClick(w.id, wordIndex);
+                            }
+                      }
                       borderWidth="1px"
                       borderColor={isOpen ? 'gray.400' : 'transparent'}
                       bg={bg}
                       borderRadius="md"
                       px={1}
                       display="inline"
+                      cursor={isLastWord ? 'default' : 'pointer'}
                     >
                       {pairNumber && (
                         <Box

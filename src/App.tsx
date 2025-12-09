@@ -4,7 +4,7 @@ import React from 'react';
 import { Box, Button, Container, Flex, Heading, NativeSelect, Spacer } from '@chakra-ui/react';
 import { type Language, translations } from './i18n.ts';
 import type { GameResults } from './gameTypes.ts';
-import type { Book } from './api/modelV2.ts';
+import type { Book, GameType } from './api/modelV2.ts';
 import {
   type BookProgress,
   ensureProgressForBooks,
@@ -24,8 +24,8 @@ import { GameCode } from './api/types.ts';
 import { CrossoutView } from './components/CrossoutView.tsx';
 import { AnagramView } from './components/AnagramView.tsx';
 import { SwitchView } from './components/SwitchView.tsx';
-import type { GameType } from './api/model.ts';
 import { GAME_CODE_BY_TYPE, GAME_TYPES } from './components/ui/consts.ts';
+import { ChoiceView } from './components/ChoiceView.tsx';
 
 type Route = 'home' | 'selectGame' | 'selectBook' | 'puzzle' | 'results' | 'progress';
 
@@ -221,6 +221,13 @@ export class App extends React.Component<unknown, AppState> {
   handleBackToLibraryFromResults(): void {
     this.setState({
       route: 'selectBook',
+      selectedBookId: null,
+      selectedExtractId: null,
+      selectedGameId: null,
+      selectedGameType: null,
+      selectedGameCode: null,
+      currentChapterIndex: 0,
+      results: null,
     });
   }
 
@@ -380,6 +387,19 @@ export class App extends React.Component<unknown, AppState> {
       );
     }
 
+    if (selectedGameType === 'choice') {
+      return (
+        <ChoiceView
+          apiClient={this.apiClient}
+          extractId={selectedExtractId}
+          type={selectedGameType}
+          language={language}
+          onBackToHome={this.handleBackToHome}
+          onFinishLevel={this.handleFinishLevel}
+        />
+      );
+    }
+
     return (
       <HomeView
         language={language}
@@ -404,7 +424,6 @@ export class App extends React.Component<unknown, AppState> {
           maxW="5xl"
           mx="auto"
         >
-          {/* Sticky header */}
           <Box
             position="sticky"
             top="16px"
@@ -442,10 +461,8 @@ export class App extends React.Component<unknown, AppState> {
             </Flex>
           </Box>
 
-          {/* Content */}
           <Box mt={4}>{this.renderCurrentView()}</Box>
 
-          {/* Modal interrupt game – bez zmian */}
           {showInterruptGameModal && (
             <div
               style={{

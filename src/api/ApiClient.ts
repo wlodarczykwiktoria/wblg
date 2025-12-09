@@ -14,8 +14,14 @@ import type {
 } from './types';
 import { GameCode } from './types';
 
-import type { AnagramRiddle, CrossoutRiddle, SpellcheckRiddle, SwitchRiddle } from './modelV2';
-import { anagramMockResponse, crossoutMockResponse, spellcheckMockResponse, switchMockResponse } from './mockExamples';
+import type { AnagramRiddle, ChoiceRiddle, CrossoutRiddle, SpellcheckRiddle, SwitchRiddle } from './modelV2';
+import {
+  anagramMockResponse,
+  choiceMockResponse,
+  crossoutMockResponse,
+  spellcheckMockResponse,
+  switchMockResponse,
+} from './mockExamples';
 
 // ---- MOCK DANYCH ----
 
@@ -153,6 +159,15 @@ const MOCK_GAMES: Game[] = [
     description_en: 'Find pairs of neighbouring words that have been swapped.',
     description_pl: 'Znajdź pary sąsiadujących słów, które zostały zamienione miejscami.',
   },
+  {
+    id: 6,
+    code: GameCode.Choice,
+    type: 'choice',
+    name_en: 'Multiple choice gaps',
+    name_pl: 'Wybierz słowo',
+    description_en: 'Click each gap and choose the correct word from three options.',
+    description_pl: 'Kliknij każdą lukę i wybierz poprawne słowo z trzech możliwości.',
+  },
 ];
 
 const BASE_PARTS: RiddlePart[] = [
@@ -204,6 +219,8 @@ const CROSSOUT_RIDDLES: CrossoutRiddle[] = Array.from({ length: 5 }).map(() => c
 const ANAGRAM_RIDDLES: AnagramRiddle[] = Array.from({ length: 5 }).map(() => anagramMockResponse.riddle);
 
 const SWITCH_RIDDLES: SwitchRiddle[] = Array.from({ length: 5 }).map(() => switchMockResponse.riddle);
+
+const CHOICE_RIDDLES: ChoiceRiddle[] = Array.from({ length: 5 }).map(() => choiceMockResponse.riddle);
 
 export class ApiClient {
   constructor(private readonly baseUrl: string = '') {}
@@ -268,6 +285,11 @@ export class ApiClient {
   async getSwitchRiddles(extractId: number): Promise<SwitchRiddle[]> {
     console.log('getSwitchRiddles mock for extract:', extractId);
     return Promise.resolve(SWITCH_RIDDLES);
+  }
+
+  async getChoiceRiddles(extractId: number): Promise<ChoiceRiddle[]> {
+    console.log('getChoiceRiddles mock for extract:', extractId);
+    return Promise.resolve(CHOICE_RIDDLES);
   }
 
   async submitAnswer(levelId: number, riddleId: number, answer: string): Promise<SubmitAnswerResponse> {

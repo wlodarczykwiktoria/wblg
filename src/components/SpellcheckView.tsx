@@ -295,7 +295,6 @@ export class SpellcheckView extends React.Component<Props, State> {
         mx="auto"
       >
         <Stack>
-          {/* Górny pasek: Back + Pauza */}
           <Flex
             justify="right"
             align="center"
@@ -309,7 +308,6 @@ export class SpellcheckView extends React.Component<Props, State> {
             </Button>
           </Flex>
 
-          {/* Numer zadania + timer */}
           <Flex
             justify="space-between"
             align="center"
@@ -322,7 +320,6 @@ export class SpellcheckView extends React.Component<Props, State> {
             </Text>
           </Flex>
 
-          {/* Nagłówek gry + instrukcja */}
           <Heading
             size="md"
             mt={2}
@@ -336,14 +333,12 @@ export class SpellcheckView extends React.Component<Props, State> {
             {t.spellcheckInstructions}
           </Text>
 
-          {/* Sama gra – ciągły tekst z klikalnymi słowami */}
           <SpellcheckGame
             riddle={riddle}
             selectedWordIds={selectedIds}
             onToggleWord={this.handleToggleWord}
           />
 
-          {/* Komunikat walidacyjny */}
           {feedbackText && (
             <Box
               borderWidth="1px"
@@ -355,7 +350,6 @@ export class SpellcheckView extends React.Component<Props, State> {
             </Box>
           )}
 
-          {/* Nawigacja między stronami – identyczna jak w PuzzleView */}
           <Flex
             justify="space-between"
             mt={2}
@@ -378,7 +372,6 @@ export class SpellcheckView extends React.Component<Props, State> {
             </Button>
           </Flex>
 
-          {/* Duży przycisk "Zakończ poziom" pod spodem */}
           <Button
             mt={4}
             onClick={this.handleFinishClick}
@@ -388,7 +381,6 @@ export class SpellcheckView extends React.Component<Props, State> {
           </Button>
         </Stack>
 
-        {/* PAUSE MODAL */}
         {showPauseModal && (
           <Box
             position="fixed"
@@ -434,7 +426,6 @@ export class SpellcheckView extends React.Component<Props, State> {
           </Box>
         )}
 
-        {/* FINISH CONFIRM MODAL – to samo co w PuzzleView */}
         {showFinishConfirm && (
           <Box
             position="fixed"

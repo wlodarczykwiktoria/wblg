@@ -59,7 +59,6 @@ export class ResultsScreen extends React.Component<Props> {
             {t.resultsSubtitle}
           </Text>
 
-          {/* Final score card */}
           <Box
             mx="auto"
             maxW="lg"
@@ -90,7 +89,6 @@ export class ResultsScreen extends React.Component<Props> {
               {t.outOfPointsLabel}
             </Text>
 
-            {/* prosty pasek postępu */}
             <Box
               h="3"
               borderRadius="full"
@@ -105,7 +103,6 @@ export class ResultsScreen extends React.Component<Props> {
             </Box>
           </Box>
 
-          {/* Breakdown */}
           <Box
             mx="auto"
             maxW="xl"
@@ -185,7 +182,6 @@ export class ResultsScreen extends React.Component<Props> {
             </SimpleGrid>
           </Box>
 
-          {/* Buttons */}
           <Flex
             justify="center"
             gap={3}

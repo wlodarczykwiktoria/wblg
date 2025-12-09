@@ -6,6 +6,7 @@ export enum GameCode {
   Crossout = 'Crossout',
   Anagram = 'Anagram',
   Switch = 'Switch',
+  Choice = 'Choice',
 }
 
 export type Book = {

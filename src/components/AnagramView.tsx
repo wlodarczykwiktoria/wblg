@@ -285,7 +285,6 @@ export class AnagramView extends React.Component<Props, State> {
         mx="auto"
       >
         <Stack>
-          {/* Górny pasek: Back + Pauza */}
           <Flex
             justify="right"
             align="center"
@@ -299,7 +298,6 @@ export class AnagramView extends React.Component<Props, State> {
             </Button>
           </Flex>
 
-          {/* Numer zadania + czas */}
           <Flex
             justify="space-between"
             align="center"
@@ -312,7 +310,6 @@ export class AnagramView extends React.Component<Props, State> {
             </Text>
           </Flex>
 
-          {/* Nagłówek + opis gry */}
           <Heading
             size="md"
             mt={2}
@@ -326,14 +323,12 @@ export class AnagramView extends React.Component<Props, State> {
             {t.anagramInstructions}
           </Text>
 
-          {/* Tekst gry – jak w Spellcheck */}
           <AnagramGame
             riddle={riddle}
             selectedWordIds={selectedIds}
             onToggleWord={this.handleToggleWord}
           />
 
-          {/* Walidacja */}
           {feedbackText && (
             <Box
               borderWidth="1px"
@@ -345,7 +340,6 @@ export class AnagramView extends React.Component<Props, State> {
             </Box>
           )}
 
-          {/* Nawigacja */}
           <Flex
             justify="space-between"
             mt={2}
@@ -368,7 +362,6 @@ export class AnagramView extends React.Component<Props, State> {
             </Button>
           </Flex>
 
-          {/* Zakończenie poziomu */}
           <Button
             mt={4}
             onClick={this.handleFinishClick}
@@ -424,7 +417,6 @@ export class AnagramView extends React.Component<Props, State> {
           </Box>
         )}
 
-        {/* Modal wcześniejszego zakończenia */}
         {showFinishConfirm && (
           <Box
             position="fixed"

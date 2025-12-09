@@ -120,6 +120,7 @@ export class SwitchView extends React.Component<Props, State> {
   private allAnswered(): boolean {
     const { riddles, selectedPairs } = this.state;
     if (riddles.length === 0) return false;
+
     return riddles.every((_, index) => (selectedPairs[index] ?? []).length > 0);
   }
 
@@ -130,43 +131,40 @@ export class SwitchView extends React.Component<Props, State> {
 
   handleWordClick(wordId: string, wordIndex: number): void {
     this.setState((prev) => {
-      const { currentIndex, openWordId, openWordIndex, selectedPairs } = prev;
+      const { currentIndex, riddles, selectedPairs } = prev;
+
+      const riddle = riddles[currentIndex];
+      if (!riddle) return prev;
+
+      const words = riddle.prompt.words;
+
+      if (wordIndex >= words.length - 1) {
+        return prev;
+      }
+
+      const rightWord = words[wordIndex + 1];
+
       const pairsForPuzzle = selectedPairs[currentIndex] ?? [];
 
-      const alreadyPaired = pairsForPuzzle.some((p) => p.firstWordId === wordId || p.secondWordId === wordId);
+      // sprawdź czy któreś z tych słów już jest w parze
+      const alreadyPaired = pairsForPuzzle.some(
+        (p) =>
+          p.firstWordId === wordId ||
+          p.secondWordId === wordId ||
+          p.firstWordId === rightWord.id ||
+          p.secondWordId === rightWord.id,
+      );
       if (alreadyPaired) {
         return prev;
       }
 
-      if (!openWordId && pairsForPuzzle.length >= MAX_PAIRS_PER_PUZZLE) {
-        return prev;
-      }
-
-      if (!openWordId) {
-        return {
-          ...prev,
-          openWordId: wordId,
-          openWordIndex: wordIndex,
-          feedbackKey: null,
-        };
-      }
-
-      if (openWordId === wordId) {
-        return {
-          ...prev,
-          openWordId: null,
-          openWordIndex: null,
-          feedbackKey: null,
-        };
-      }
-
-      if (openWordIndex === null || Math.abs(wordIndex - openWordIndex) !== 1) {
+      if (pairsForPuzzle.length >= MAX_PAIRS_PER_PUZZLE) {
         return prev;
       }
 
       const newPair: SelectedSwitchPair = {
-        firstWordId: openWordId,
-        secondWordId: wordId,
+        firstWordId: wordId,
+        secondWordId: rightWord.id,
       };
 
       const nextPairsForPuzzle = [...pairsForPuzzle, newPair];
@@ -284,7 +282,7 @@ export class SwitchView extends React.Component<Props, State> {
     let correctPairs = 0;
     let mistakes = 0;
 
-    riddles.forEach((_riddle, index) => {
+    riddles.forEach((_r, index) => {
       const pairs = selectedPairs[index] ?? [];
       pairs.forEach((p) => {
         const id = normalizePairId(p.firstWordId, p.secondWordId);
@@ -297,7 +295,6 @@ export class SwitchView extends React.Component<Props, State> {
     });
 
     const accuracy = totalPossibleCorrect === 0 ? 0 : correctPairs / totalPossibleCorrect;
-
     const score = Math.round(accuracy * 100);
 
     const results: GameResults = {
@@ -364,7 +361,6 @@ export class SwitchView extends React.Component<Props, State> {
         mx="auto"
       >
         <Stack>
-          {/* Górny pasek jak w Spellcheck */}
           <Flex
             justify="right"
             align="center"
@@ -378,7 +374,6 @@ export class SwitchView extends React.Component<Props, State> {
             </Button>
           </Flex>
 
-          {/* Numer zadania + czas */}
           <Flex
             justify="space-between"
             align="center"
@@ -391,7 +386,6 @@ export class SwitchView extends React.Component<Props, State> {
             </Text>
           </Flex>
 
-          {/* Nagłówek + opis */}
           <Heading
             size="md"
             mt={2}
@@ -405,7 +399,6 @@ export class SwitchView extends React.Component<Props, State> {
             {t.switchInstructions}
           </Text>
 
-          {/* Tekst gry */}
           <SwitchGame
             riddle={riddle}
             selectedPairs={pairsForCurrent}
@@ -413,7 +406,6 @@ export class SwitchView extends React.Component<Props, State> {
             onWordClick={this.handleWordClick}
           />
 
-          {/* Reset jak w FillGaps */}
           <Flex justify="flex-start">
             <Button
               size="sm"
@@ -424,7 +416,6 @@ export class SwitchView extends React.Component<Props, State> {
             </Button>
           </Flex>
 
-          {/* Walidacja */}
           {feedbackText && (
             <Box
               borderWidth="1px"
@@ -436,7 +427,6 @@ export class SwitchView extends React.Component<Props, State> {
             </Box>
           )}
 
-          {/* Nawigacja */}
           <Flex
             justify="space-between"
             mt={2}
@@ -459,17 +449,19 @@ export class SwitchView extends React.Component<Props, State> {
             </Button>
           </Flex>
 
-          {/* Zakończ poziom */}
-          <Button
+          <Flex
+            justify="flex-end"
             mt={4}
-            colorScheme="blue"
-            onClick={this.handleFinishClick}
           >
-            {t.finishButtonLabel}
-          </Button>
+            <Button
+              colorScheme="blue"
+              onClick={this.handleFinishClick}
+            >
+              {t.finishButtonLabel}
+            </Button>
+          </Flex>
         </Stack>
 
-        {/* Modal pauzy */}
         {showPauseModal && (
           <Box
             position="fixed"
@@ -488,13 +480,13 @@ export class SwitchView extends React.Component<Props, State> {
                 borderRadius="xl"
                 p={6}
                 maxW="sm"
-                w="90%"
+                w="full"
                 position="relative"
               >
                 <CloseButton
                   position="absolute"
-                  right={3}
-                  top={3}
+                  top={2}
+                  right={2}
                   onClick={this.handleResume}
                 />
                 <Heading
@@ -515,7 +507,6 @@ export class SwitchView extends React.Component<Props, State> {
           </Box>
         )}
 
-        {/* Modal wcześniejszego zakończenia */}
         {showFinishConfirm && (
           <Box
             position="fixed"
@@ -534,13 +525,13 @@ export class SwitchView extends React.Component<Props, State> {
                 borderRadius="xl"
                 p={6}
                 maxW="sm"
-                w="90%"
+                w="full"
                 position="relative"
               >
                 <CloseButton
                   position="absolute"
-                  right={3}
-                  top={3}
+                  top={2}
+                  right={2}
                   onClick={() => this.setState({ showFinishConfirm: false })}
                 />
                 <Heading
@@ -555,13 +546,13 @@ export class SwitchView extends React.Component<Props, State> {
                   gap={3}
                 >
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => this.setState({ showFinishConfirm: false })}
                   >
                     {t.finishEarlyCancel}
                   </Button>
                   <Button
-                    colorScheme="blue"
+                    colorScheme="red"
                     onClick={() => {
                       this.setState({ showFinishConfirm: false }, () => this.finishInternal());
                     }}

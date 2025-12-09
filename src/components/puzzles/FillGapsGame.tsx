@@ -103,7 +103,6 @@ export class FillGapsGame extends React.Component<Props, State> {
 
     return (
       <VStack align="stretch">
-        {/* Tekst z lukami */}
         <Box
           bg="white"
           borderRadius="2xl"
@@ -150,7 +149,6 @@ export class FillGapsGame extends React.Component<Props, State> {
           })}
         </Box>
 
-        {/* Bank słów */}
         <Box
           bg="white"
           borderRadius="2xl"
@@ -190,7 +188,6 @@ export class FillGapsGame extends React.Component<Props, State> {
           </Wrap>
         </Box>
 
-        {/* Reset */}
         <Flex justify="flex-start">
           <Button
             onClick={this.handleReset}

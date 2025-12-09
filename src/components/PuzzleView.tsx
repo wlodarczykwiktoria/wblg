@@ -298,7 +298,6 @@ export class PuzzleView extends React.Component<Props, State> {
             </Button>
           </Flex>
 
-          {/* Górny pasek: numer zadania + timer */}
           <Flex
             justify="space-between"
             align="center"
@@ -318,7 +317,6 @@ export class PuzzleView extends React.Component<Props, State> {
             {t.puzzleHeading}
           </Heading>
 
-          {/* Sama gra */}
           <FillGapsGame
             key={riddle.id}
             riddle={riddle}
@@ -327,7 +325,6 @@ export class PuzzleView extends React.Component<Props, State> {
             onChange={(answers) => this.handleAnswersChange(currentIndex, answers)}
           />
 
-          {/* Walidacja dla "Następne" */}
           {feedbackText && (
             <Box
               borderWidth="1px"
@@ -339,7 +336,6 @@ export class PuzzleView extends React.Component<Props, State> {
             </Box>
           )}
 
-          {/* Nawigacja między iteracjami */}
           <Flex
             justify="space-between"
             mt={2}
@@ -362,7 +358,6 @@ export class PuzzleView extends React.Component<Props, State> {
             </Button>
           </Flex>
 
-          {/* Zakończ poziom */}
           <Button
             mt={4}
             onClick={this.handleFinishClick}
@@ -372,7 +367,6 @@ export class PuzzleView extends React.Component<Props, State> {
           </Button>
         </Stack>
 
-        {/* PAUSE MODAL */}
         {showPauseModal && (
           <Box
             position="fixed"
@@ -422,7 +416,6 @@ export class PuzzleView extends React.Component<Props, State> {
           </Box>
         )}
 
-        {/* FINISH CONFIRM MODAL */}
         {showFinishConfirm && (
           <Box
             position="fixed"

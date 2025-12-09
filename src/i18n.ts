@@ -26,12 +26,12 @@ export type Translations = {
   columnYear: string;
 
   completedChaptersLabel: string;
-  startOverLabel: string;
+  startGameLabel: string;
   chooseChapterLabel: string;
-  startOverConfirmTitle: string;
-  startOverConfirmMessage: string;
-  startOverConfirmYes: string;
-  startOverConfirmNo: string;
+  startGameConfirmTitle: string;
+  startGameConfirmMessage: string;
+  startGameConfirmYes: string;
+  startGameConfirmNo: string;
 
   progressNavLabel: string;
   progressHeading: string;
@@ -99,6 +99,15 @@ export type Translations = {
   switchNeedSelectionLabel: string;
   switchNoDataLabel: string;
   switchPauseMessage: string;
+
+  // Choice game
+  choiceHeading: string;
+  choiceInstructions: string;
+  choiceNeedSelectionLabel: string;
+  choiceNoDataLabel: string;
+  choicePauseMessage: string;
+  choiceOptionsTitle: string;
+  choiceOptionsHint: string;
 };
 
 export const translations: Record<Language, Translations> = {
@@ -126,13 +135,13 @@ export const translations: Record<Language, Translations> = {
     columnYear: 'Year',
 
     completedChaptersLabel: 'Chapters completed',
-    startOverLabel: 'Start over',
+    startGameLabel: 'Start game',
     chooseChapterLabel: 'Choose chapter',
-    startOverConfirmTitle: 'Start over?',
-    startOverConfirmMessage:
+    startGameConfirmTitle: 'Start over?',
+    startGameConfirmMessage:
       'Are you sure you want to start from the beginning? This will remove your current progress.',
-    startOverConfirmYes: 'Yes, start over',
-    startOverConfirmNo: 'Cancel',
+    startGameConfirmYes: 'Yes, start over',
+    startGameConfirmNo: 'Cancel',
 
     progressNavLabel: 'Results',
     progressHeading: 'Results',
@@ -195,6 +204,14 @@ export const translations: Record<Language, Translations> = {
     switchNeedSelectionLabel: 'Select at least one pair before moving on.',
     switchNoDataLabel: 'No data for this game.',
     switchPauseMessage: 'The game is paused. Click "Resume" to continue.',
+
+    choiceHeading: 'Choose the correct word for each gap',
+    choiceInstructions: 'Click a gap and then pick the correct word from the three options.',
+    choiceNeedSelectionLabel: 'Answer all gaps before moving on.',
+    choiceNoDataLabel: 'No data for this game.',
+    choicePauseMessage: 'The game is paused. Click "Resume" to continue.',
+    choiceOptionsTitle: 'Choose a word',
+    choiceOptionsHint: 'Click a gap in the text to see possible answers.',
   },
 
   pl: {
@@ -221,12 +238,12 @@ export const translations: Record<Language, Translations> = {
     columnYear: 'Rok',
 
     completedChaptersLabel: 'Ukończone rozdziały',
-    startOverLabel: 'Rozpocznij od nowa',
+    startGameLabel: 'Rozpocznij grę',
     chooseChapterLabel: 'Wybierz rozdział',
-    startOverConfirmTitle: 'Rozpocząć od nowa?',
-    startOverConfirmMessage: 'Czy na pewno chcesz rozpocząć od nowa? Usunie to obecny postęp.',
-    startOverConfirmYes: 'Tak, rozpocznij od nowa',
-    startOverConfirmNo: 'Anuluj',
+    startGameConfirmTitle: 'Rozpocząć od nowa?',
+    startGameConfirmMessage: 'Czy na pewno chcesz rozpocząć od nowa? Usunie to obecny postęp.',
+    startGameConfirmYes: 'Tak, rozpocznij od nowa',
+    startGameConfirmNo: 'Anuluj',
 
     progressNavLabel: 'Wyniki',
     progressHeading: 'Wyniki',
@@ -290,5 +307,13 @@ export const translations: Record<Language, Translations> = {
     switchNeedSelectionLabel: 'Zaznacz przynajmniej jedną parę przed przejściem dalej.',
     switchNoDataLabel: 'Brak danych do tej gry.',
     switchPauseMessage: 'Gra jest wstrzymana. Kliknij „Wznów”, aby kontynuować.',
+
+    choiceHeading: 'Wybierz poprawne słowo do każdej luki',
+    choiceInstructions: 'Kliknij lukę, a następnie wybierz poprawne słowo z trzech możliwości.',
+    choiceNeedSelectionLabel: 'Uzupełnij wszystkie luki przed przejściem dalej.',
+    choiceNoDataLabel: 'Brak danych do tej gry.',
+    choicePauseMessage: 'Gra jest wstrzymana. Kliknij „Wznów”, aby kontynuować.',
+    choiceOptionsTitle: 'Wybierz słowo',
+    choiceOptionsHint: 'Kliknij lukę w tekście, aby zobaczyć możliwe odpowiedzi.',
   },
 };

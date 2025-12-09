@@ -29,7 +29,7 @@ export interface BookChapterResultsResponse {
 
 // ===== Baza gier / Wynik =====
 
-export type GameType = 'fill-gaps' | 'spellcheck' | 'crossout' | 'anagram' | 'switch';
+export type GameType = 'fill-gaps' | 'spellcheck' | 'crossout' | 'anagram' | 'switch' | 'choice';
 
 export interface GameRequest {
   bookId: number;
@@ -238,4 +238,21 @@ export interface SwitchAnswerRequest {
   gameId: number;
   selectedPairs: SelectedSwitchPair[]; // lista par wskazanych przez użytkownika
   elapsedTimeMs?: number;
+}
+
+export interface ChoiceOption {
+  id: string;
+  label: string;
+}
+
+export interface ChoiceGap {
+  id: string;
+  correctOptionId: string;
+  options: ChoiceOption[];
+}
+
+export interface ChoiceRiddle {
+  id: string;
+  parts: Array<{ type: 'text'; value: string } | { type: 'gap'; gapId: string }>;
+  gaps: ChoiceGap[];
 }

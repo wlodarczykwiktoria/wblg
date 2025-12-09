@@ -1,6 +1,7 @@
 import type {
   AnagramAnswerRequest,
   AnagramResponse,
+  ChoiceRiddle,
   CrossoutAnswerRequest,
   CrossoutResponse,
   FillGapsAnswerRequest,
@@ -26,21 +27,22 @@ export const fillGapsMockResponse: FillGapsResponse = {
     prompt: {
       parts: [
         { type: 'text', value: 'Litwo, ' },
-        { type: 'gap', value: '' },
+        { type: 'gap', value: '' }, // Ojczyzno
         { type: 'text', value: ' moja! ty jesteś jak ' },
-        { type: 'gap', value: '' },
+        { type: 'gap', value: '' }, // zdrowie
         { type: 'text', value: ';\n' },
         { type: 'text', value: 'Ile cię trzeba cenić, ten tylko się dowie,\n' },
         { type: 'text', value: 'Kto cię stracił. Dziś ' },
-        { type: 'gap', value: '' },
+        { type: 'gap', value: '' }, // piękność
         { type: 'text', value: ' twą w całej ozdobie\n' },
         { type: 'text', value: 'Widzę i opisuję, bo tęsknię po tobie.' },
       ],
     },
     options: [
-      { id: 'opt1', label: 'Ojczyzno' },
-      { id: 'opt2', label: 'zdrowie' },
-      { id: 'opt3', label: 'piękność' },
+      { id: 'opt1', label: 'Ojczyzno' }, // poprawne do luki przy "Litwo,"
+      { id: 'opt2', label: 'zdrowie' }, // poprawne do luki po "jak"
+      { id: 'opt3', label: 'piękność' }, // poprawne do luki po "Dziś"
+      // parę zmyłek:
       { id: 'opt4', label: 'dziewczyno' },
       { id: 'opt5', label: 'miasto' },
       { id: 'opt6', label: 'słodycz' },
@@ -51,9 +53,9 @@ export const fillGapsMockAnswer: FillGapsAnswerRequest = {
   type: 'fill-gaps',
   gameId: 1001,
   answers: [
-    { gapIndex: 1, optionId: 'opt1' },
-    { gapIndex: 3, optionId: 'opt2' },
-    { gapIndex: 7, optionId: 'opt3' },
+    { gapIndex: 1, optionId: 'opt1' }, // Ojczyzno
+    { gapIndex: 3, optionId: 'opt2' }, // zdrowie
+    { gapIndex: 7, optionId: 'opt3' }, // piękność
   ],
   elapsedTimeMs: 45000,
 };
@@ -71,9 +73,9 @@ export const spellcheckMockResponse: SpellcheckResponse = {
         { id: 'w2', value: 'Ojczyzno' },
         { id: 'w3', value: 'moja!' },
         { id: 'w4', value: 'ty' },
-        { id: 'w5', value: 'jestęs' },
+        { id: 'w5', value: 'jestęs' }, // błąd: powinno być "jesteś"
         { id: 'w6', value: 'jak' },
-        { id: 'w7', value: 'zdrowei;' },
+        { id: 'w7', value: 'zdrowei;' }, // błąd: powinno być "zdrowie;"
         { id: 'w8', value: 'Ile' },
         { id: 'w9', value: 'cię' },
         { id: 'w10', value: 'trzeba' },
@@ -106,7 +108,7 @@ export const spellcheckMockResponse: SpellcheckResponse = {
 export const spellcheckMockAnswer: SpellcheckAnswerRequest = {
   type: 'spellcheck',
   gameId: 1002,
-  selectedWordIds: ['w5', 'w7'],
+  selectedWordIds: ['w5', 'w7'], // user kliknął dwa błędne słowa
   elapsedTimeMs: 3000,
 };
 
@@ -132,11 +134,11 @@ export const crossoutMockResponse: CrossoutResponse = {
       },
       {
         id: '4',
-        text: 'Jak mnie dziecko do zdrowia powróciłaś cudem.',
+        text: 'Widzę i opisuję, bo tęsknię po tobie.',
       },
       {
         id: '5',
-        text: 'Widzę i opisuję, bo tęsknię po tobie.',
+        text: 'A jutro rano lecę sobie w Bieszczady.', // fałszywa linia
       },
     ],
   },
@@ -145,7 +147,7 @@ export const crossoutMockResponse: CrossoutResponse = {
 export const crossoutMockAnswer: CrossoutAnswerRequest = {
   type: 'crossout',
   gameId: 1003,
-  crossedOutLineIds: '5',
+  crossedOutLineIds: '4',
   elapsedTimeMs: 45000,
 };
 
@@ -159,12 +161,12 @@ export const anagramMockResponse: AnagramResponse = {
     prompt: {
       words: [
         { id: 'w1', value: 'Litwo,' },
-        { id: 'w2', value: 'oczjzynO' },
+        { id: 'w2', value: 'oczjzynO' }, // anagram "Ojczyzno"
         { id: 'w3', value: 'moja!' },
         { id: 'w4', value: 'ty' },
         { id: 'w5', value: 'jesteś' },
         { id: 'w6', value: 'jak' },
-        { id: 'w7', value: 'rodzwei;' },
+        { id: 'w7', value: 'rodzwei;' }, // anagram "zdrowie;"
         { id: 'w8', value: 'Ile' },
         { id: 'w9', value: 'cię' },
         { id: 'w10', value: 'trzeba' },
@@ -211,8 +213,8 @@ export const switchMockResponse: SwitchResponse = {
     prompt: {
       words: [
         { id: 'w1', value: 'Litwo,' },
-        { id: 'w2', value: 'moja!' },
-        { id: 'w3', value: 'Ojczyzno' },
+        { id: 'w2', value: 'moja!' }, // zamienione miejsce
+        { id: 'w3', value: 'Ojczyzno' }, // zamienione miejsce
         { id: 'w4', value: 'ty' },
         { id: 'w5', value: 'jesteś' },
         { id: 'w6', value: 'jak' },
@@ -254,4 +256,73 @@ export const switchMockAnswer: SwitchAnswerRequest = {
     { firstWordId: 'w20', secondWordId: 'w21' },
   ],
   elapsedTimeMs: 45000,
+};
+
+export const choiceMockRiddle: ChoiceRiddle = {
+  id: 'choice-1',
+  parts: [
+    { type: 'text', value: 'Litwo! Ojczyzno moja! ty jesteś jak ' },
+    { type: 'gap', gapId: 'g1' },
+    { type: 'text', value: ';\n\nIle cię trzeba ' },
+    { type: 'gap', gapId: 'g2' },
+    { type: 'text', value: ', ten tylko się dowie,\n\nKto cię ' },
+    { type: 'gap', gapId: 'g3' },
+    { type: 'text', value: '. Dziś piękność twą w całej ozdobie\n\nW ' },
+    { type: 'gap', gapId: 'g4' },
+    { type: 'text', value: ' nazwach widzę i opisuję,\n\nBo tęskno mi za tobą i ' },
+    { type: 'gap', gapId: 'g5' },
+    { type: 'text', value: '.' },
+  ],
+  gaps: [
+    {
+      id: 'g1',
+      correctOptionId: 'g1-opt1',
+      options: [
+        { id: 'g1-opt1', label: 'zdrowie' },
+        { id: 'g1-opt2', label: 'bogactwo' },
+        { id: 'g1-opt3', label: 'siła' },
+      ],
+    },
+    {
+      id: 'g2',
+      correctOptionId: 'g2-opt1',
+      options: [
+        { id: 'g2-opt1', label: 'cenić' },
+        { id: 'g2-opt2', label: 'szanować' },
+        { id: 'g2-opt3', label: 'podziwiać' },
+      ],
+    },
+    {
+      id: 'g3',
+      correctOptionId: 'g3-opt1',
+      options: [
+        { id: 'g3-opt1', label: 'stracił' },
+        { id: 'g3-opt2', label: 'zapomniał' },
+        { id: 'g3-opt3', label: 'opuścił' },
+      ],
+    },
+    {
+      id: 'g4',
+      correctOptionId: 'g4-opt1',
+      options: [
+        { id: 'g4-opt1', label: 'polskich' },
+        { id: 'g4-opt2', label: 'obcych' },
+        { id: 'g4-opt3', label: 'dawnych' },
+      ],
+    },
+    {
+      id: 'g5',
+      correctOptionId: 'g5-opt1',
+      options: [
+        { id: 'g5-opt1', label: 'płaczę' },
+        { id: 'g5-opt2', label: 'śpiewam' },
+        { id: 'g5-opt3', label: 'milczę' },
+      ],
+    },
+  ],
+};
+
+export const choiceMockResponse = {
+  gameId: 1005,
+  riddle: choiceMockRiddle,
 };
