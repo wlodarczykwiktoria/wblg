@@ -231,11 +231,9 @@ export class ApiClient {
   }
 
   async getBooks(): Promise<Book[]> {
-    console.log("co do fiutta");
     console.log(this.baseUrl);
     if (this.baseUrl) {
       try {
-        console.log("halooo");
         const res = await fetch(`${this.baseUrl}/books`, {
           method: 'GET',
           headers: {
