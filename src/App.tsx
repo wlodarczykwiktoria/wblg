@@ -66,7 +66,7 @@ export class App extends React.Component<unknown, AppState> {
       showInterruptGameModal: false,
     };
 
-    this.apiClient = new ApiClient('https://wblg.vercel.app');
+    this.apiClient = new ApiClient('https://wblg-backend-1007953962746.europe-west1.run.app');
 
     this.handleChooseGameClick = this.handleChooseGameClick.bind(this);
     this.handleChooseBookClick = this.handleChooseBookClick.bind(this);

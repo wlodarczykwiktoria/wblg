@@ -223,7 +223,7 @@ const SWITCH_RIDDLES: SwitchRiddle[] = Array.from({ length: 5 }).map(() => switc
 const CHOICE_RIDDLES: ChoiceRiddle[] = Array.from({ length: 5 }).map(() => choiceMockResponse.riddle);
 
 export class ApiClient {
-  constructor(private readonly baseUrl: string = 'https://wblg.vercel.app') {
+  constructor(private readonly baseUrl: string = 'https://wblg-backend-1007953962746.europe-west1.run.app') {
   }
 
   async getGames(): Promise<Game[]> {
