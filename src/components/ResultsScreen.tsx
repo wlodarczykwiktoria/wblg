@@ -35,37 +35,43 @@ export class ResultsScreen extends React.Component<Props> {
 
     return (
       <Box
-        maxW="3xl"
+        maxW="600px"
         mx="auto"
-        mt={8}
+        mt={12}
         mb={12}
         bg="white"
         borderRadius="2xl"
-        boxShadow="lg"
+        boxShadow="2xl"
         p={10}
         textAlign="center"
+        border="1px solid #e2e8f0"
       >
         <Box textAlign="center">
           <Heading
             size="lg"
             mb={2}
+            color="green.600"
+            fontWeight="extrabold"
           >
             {t.resultsTitle}
           </Heading>
           <Text
             mb={8}
-            color="gray.600"
+            color="gray.500"
+            fontSize="lg"
           >
             {t.resultsSubtitle}
           </Text>
 
           <Box
             mx="auto"
-            maxW="lg"
+            maxW="sm"
             borderWidth="1px"
             borderRadius="2xl"
             p={6}
             mb={8}
+            bg="gray.50"
+            boxShadow="md"
           >
             <Text
               fontSize="xs"
@@ -79,6 +85,7 @@ export class ResultsScreen extends React.Component<Props> {
             <Heading
               size="2xl"
               color="green.500"
+              fontWeight="extrabold"
             >
               {score}
             </Heading>
@@ -92,24 +99,28 @@ export class ResultsScreen extends React.Component<Props> {
             <Box
               h="3"
               borderRadius="full"
-              bg="gray.100"
+              bg="gray.200"
               overflow="hidden"
+              mt={2}
             >
               <Box
                 h="100%"
                 width={`${score}%`}
                 bg="green.400"
+                transition="width 0.5s"
               />
             </Box>
           </Box>
 
           <Box
             mx="auto"
-            maxW="xl"
+            maxW="md"
             borderWidth="1px"
             borderRadius="2xl"
             p={6}
             mb={8}
+            bg="white"
+            boxShadow="md"
           >
             <Text
               fontSize="sm"
@@ -188,13 +199,13 @@ export class ResultsScreen extends React.Component<Props> {
             flexWrap="wrap"
           >
             <Button
-              colorScheme="green"
+              backgroundColor="#1e3932"
               onClick={this.props.onPlayAgain}
             >
               {t.playAgainLabel}
             </Button>
             <Button
-              colorScheme="blue"
+              backgroundColor="#1e3932"
               onClick={this.props.onNextExtract}
             >
               {t.nextExtractLabel}

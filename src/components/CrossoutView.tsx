@@ -368,7 +368,7 @@ export class CrossoutView extends React.Component<Props, State> {
           <Button
             mt={4}
             onClick={this.handleFinishClick}
-            colorScheme="blue"
+            backgroundColor="#1e3932"
           >
             {t.finishButtonLabel}
           </Button>
@@ -409,7 +409,7 @@ export class CrossoutView extends React.Component<Props, State> {
                 </Heading>
                 <Text mb={6}>{t.crossoutPauseMessage}</Text>
                 <Button
-                  colorScheme="blue"
+                  backgroundColor="#1e3932"
                   onClick={this.handleResume}
                 >
                   {t.resumeLabel}
@@ -464,7 +464,7 @@ export class CrossoutView extends React.Component<Props, State> {
                     {t.finishEarlyCancel}
                   </Button>
                   <Button
-                    colorScheme="blue"
+                    backgroundColor="#1e3932"
                     onClick={() => {
                       this.setState({ showFinishConfirm: false }, () => this.finishInternal());
                     }}

@@ -57,19 +57,24 @@ export const AnagramGame: React.FC<Props> = ({ riddle, selectedWordIds, onToggle
             >
               {line.map((w, index) => {
                 const selected = selectedWordIds.includes(w.id);
-
                 return (
                   <React.Fragment key={w.id}>
                     <Box
                       as="button"
                       onClick={() => onToggleWord(w.id)}
                       borderWidth="1px"
-                      borderColor={selected ? 'gray.400' : 'transparent'}
-                      bg={selected ? 'gray.100' : 'transparent'}
-                      _hover={{ bg: 'gray.100' }}
+                      borderColor={selected ? 'green.400' : 'transparent'}
+                      bg={selected ? 'green.50' : 'transparent'}
+                      _hover={{ bg: 'green.100' }}
                       borderRadius="md"
-                      px={1}
+                      fontWeight="normal"
+                      fontSize="md"
+                      color={selected ? 'green.700' : 'gray.800'}
+                      boxShadow="none"
+                      transition="background 0.2s"
                       display="inline"
+                      style={{ padding: '2px 2px', margin: '0 1px' }}  
+
                     >
                       {w.value}
                     </Box>

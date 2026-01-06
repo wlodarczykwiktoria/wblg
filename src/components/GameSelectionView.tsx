@@ -95,6 +95,8 @@ export class GameSelectionView extends React.Component<Props, State> {
                 borderWidth="1px"
                 borderRadius="xl"
                 p={4}
+                color="#1e3932"
+                fontSize="xl"
                 textAlign="left"
                 transition="all 0.2s"
                 _hover={{

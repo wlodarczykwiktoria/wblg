@@ -402,7 +402,7 @@ export class ChoiceView extends React.Component<Props, State> {
 
           <Button
             mt={4}
-            colorScheme="blue"
+            backgroundColor="#1e3932"
             onClick={this.handleFinishClick}
           >
             {t.finishButtonLabel}
@@ -444,7 +444,7 @@ export class ChoiceView extends React.Component<Props, State> {
                 </Heading>
                 <Text mb={6}>{t.choicePauseMessage}</Text>
                 <Button
-                  colorScheme="blue"
+                  backgroundColor="#1e3932"
                   onClick={this.handleResume}
                 >
                   {t.resumeLabel}
@@ -499,7 +499,7 @@ export class ChoiceView extends React.Component<Props, State> {
                     {t.finishEarlyCancel}
                   </Button>
                   <Button
-                    colorScheme="blue"
+                    backgroundColor="#1e3932"
                     onClick={() => {
                       this.setState({ showFinishConfirm: false }, () => this.finishInternal());
                     }}

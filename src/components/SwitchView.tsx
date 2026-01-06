@@ -454,7 +454,7 @@ export class SwitchView extends React.Component<Props, State> {
             mt={4}
           >
             <Button
-              colorScheme="blue"
+              backgroundColor="#1e3932"
               onClick={this.handleFinishClick}
             >
               {t.finishButtonLabel}
@@ -497,7 +497,7 @@ export class SwitchView extends React.Component<Props, State> {
                 </Heading>
                 <Text mb={6}>{t.switchPauseMessage}</Text>
                 <Button
-                  colorScheme="blue"
+                  backgroundColor="#1e3932"
                   onClick={this.handleResume}
                 >
                   {t.resumeLabel}
@@ -552,7 +552,7 @@ export class SwitchView extends React.Component<Props, State> {
                     {t.finishEarlyCancel}
                   </Button>
                   <Button
-                    colorScheme="red"
+                    backgroundColor="#1e3932"
                     onClick={() => {
                       this.setState({ showFinishConfirm: false }, () => this.finishInternal());
                     }}

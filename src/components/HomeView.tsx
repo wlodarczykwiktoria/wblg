@@ -30,13 +30,14 @@ export class HomeView extends React.Component<Props> {
         >
           <Button
             size="lg"
+            backgroundColor="#1e3932"
             onClick={this.props.onChooseGame}
           >
             {t.chooseGame}
           </Button>
           <Button
             size="lg"
-            variant="outline"
+            backgroundColor="#1e3932"         
             onClick={this.props.onChooseBook}
           >
             {t.chooseBook}

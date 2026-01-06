@@ -36,12 +36,12 @@ export class LibraryView extends React.Component<Props, State> {
 
   async showBooks(): Promise<void> {
     this.setState({ loading: true });
-    const books = await this.props.apiClient.getBooks();
+    // const books = await this.props.apiClient.getBooks();
 
-    if (books.length > 0) {
-      const extracts = await this.props.apiClient.getExtracts(books[0].id);
-      this.setState({ extracts });
-    }
+    // if (books.length > 0) {
+    //   const extracts = await this.props.apiClient.getExtracts(books[0].id);
+    //   this.setState({ extracts });
+    // }
   }
 
   search(q: string): void {
@@ -84,6 +84,7 @@ export class LibraryView extends React.Component<Props, State> {
           {extracts.map((ex) => (
             <List.Item key={ex.id}>
               <Button
+                backgroundColor="#1e3932"
                 size="sm"
                 onClick={() => this.selectExtract(ex.id)}
               >

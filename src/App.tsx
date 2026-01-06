@@ -26,6 +26,7 @@ import { AnagramView } from './components/AnagramView.tsx';
 import { SwitchView } from './components/SwitchView.tsx';
 import { GAME_CODE_BY_TYPE, GAME_TYPES } from './components/ui/consts.ts';
 import { ChoiceView } from './components/ChoiceView.tsx';
+import { MdLibraryBooks } from 'react-icons/md';
 
 type Route = 'home' | 'selectGame' | 'selectBook' | 'puzzle' | 'results' | 'progress';
 
@@ -67,7 +68,7 @@ export class App extends React.Component<unknown, AppState> {
       showInterruptGameModal: false,
     };
 
-    this.apiClient = new ApiClient('');
+    this.apiClient = new ApiClient('https://wblg.vercel.app');
 
     this.handleChooseGameClick = this.handleChooseGameClick.bind(this);
     this.handleChooseBookClick = this.handleChooseBookClick.bind(this);
@@ -90,10 +91,10 @@ export class App extends React.Component<unknown, AppState> {
 
   async loadBooksAndProgress(): Promise<void> {
     this.setState({ booksLoading: true });
-    const books = await this.apiClient.getBooks();
-    const existing = loadProgress();
-    const progress = existing.length === 0 ? ensureProgressForBooks(books) : existing;
-    this.setState({ books, progress, booksLoading: false });
+    // const books = await this.apiClient.getBooks();
+    // const existing = loadProgress();
+    // const progress = existing.length === 0 ? ensureProgressForBooks(books) : existing;
+    // this.setState({  progress, booksLoading: false });
   }
 
   getRandomGameType(): GameType {
@@ -376,14 +377,14 @@ export class App extends React.Component<unknown, AppState> {
 
       if (selectedGameType === 'choice') {
         return (
-            <ChoiceView
-                apiClient={this.apiClient}
-                extractId={selectedExtractId}
-                type={selectedGameType}
-                language={language}
-                onBackToHome={this.handleBackToHome}
-                onFinishLevel={this.handleFinishLevel}
-            />
+          <ChoiceView
+            apiClient={this.apiClient}
+            extractId={selectedExtractId}
+            type={selectedGameType}
+            language={language}
+            onBackToHome={this.handleBackToHome}
+            onFinishLevel={this.handleFinishLevel}
+          />
         );
       }
     }
@@ -414,117 +415,123 @@ export class App extends React.Component<unknown, AppState> {
     const t = translations[language];
 
     return (
-      <Container
-        maxW="6xl"
-        py={4}
-        pb={0}
-        position="relative"
-      >
+      <div>
+        {/* Navbar */}
         <Box
-          maxW="5xl"
-          mx="auto"
+          as="nav"
+          position="sticky"
+          top="0"
+          zIndex={1000}
+          bg="white"
+          py={3}
+          px={6}
+          borderBottom="1px solid #e2e8f0"
+          boxShadow="0 2px 8px 0 rgba(0,0,0,0.03)"
+          borderRadius="0 0 24px 24px"
+        >
+          <Flex align="center">
+            <MdLibraryBooks size={32} fill='#1e3932' />
+            <Heading marginLeft={4} size="md">{t.appTitle}</Heading>
+            <Spacer />
+            <Button
+              size="sm"
+              mr={3}
+              variant="outline"
+              onClick={this.handleOpenProgress}
+            >
+              {t.progressNavLabel}
+            </Button>
+            <NativeSelect.Root
+              size="sm"
+              width="120px"
+            >
+              <NativeSelect.Field
+                value={language}
+                onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
+                  this.handleLanguageChange(event.target.value as Language)
+                }
+              >
+                <option value="pl">Polski</option>
+                <option value="en">English</option>
+              </NativeSelect.Field>
+              <NativeSelect.Indicator />
+            </NativeSelect.Root>
+          </Flex>
+        </Box>
+        <Container
+          maxW="6xl"
+          p={0}
+          position="relative"
         >
           <Box
-            position="sticky"
-            top="16px"
-            zIndex={1000}
-            bg="gray.50"
-            py={2}
+            maxW="5xl"
+            mx="auto"
           >
-            <Flex align="center">
-              <Heading size="md">{t.appTitle}</Heading>
-              <Spacer />
-              <Button
-                size="sm"
-                mr={3}
-                variant="outline"
-                onClick={this.handleOpenProgress}
-              >
-                {t.progressNavLabel}
-              </Button>
-              <NativeSelect.Root
-                size="sm"
-                width="120px"
-              >
-                <NativeSelect.Field
-                  value={language}
-                  onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
-                    this.handleLanguageChange(event.target.value as Language)
-                  }
-                >
-                  <option value="pl">Polski</option>
-                  <option value="en">English</option>
-                </NativeSelect.Field>
+            <Box mt={4}>{this.renderCurrentView()}</Box>
 
-                <NativeSelect.Indicator />
-              </NativeSelect.Root>
-            </Flex>
-          </Box>
-
-          <Box mt={4}>{this.renderCurrentView()}</Box>
-
-          {showInterruptGameModal && (
-            <div
-              style={{
-                position: 'fixed',
-                inset: 0,
-                backgroundColor: 'rgba(0,0,0,0.5)',
-                backdropFilter: 'blur(4px)',
-                zIndex: 1500,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
+            {showInterruptGameModal && (
               <div
                 style={{
-                  backgroundColor: 'white',
-                  borderRadius: '16px',
-                  padding: '24px',
-                  maxWidth: '400px',
-                  width: '90%',
+                  position: 'fixed',
+                  inset: 0,
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  backdropFilter: 'blur(4px)',
+                  zIndex: 1500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
-                <h2 style={{ fontSize: '18px', marginBottom: '8px' }}>
-                  {language === 'pl' ? 'Przerwać aktualną grę?' : 'Interrupt current game?'}
-                </h2>
-                <p style={{ marginBottom: '16px' }}>
-                  {language === 'pl'
-                    ? 'Gra zostanie przerwana, a obecny postęp w tej rundzie zostanie utracony.'
-                    : 'The current game will be stopped and your in-progress state for this round will be lost.'}
-                </p>
                 <div
                   style={{
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    gap: '8px',
+                    backgroundColor: 'white',
+                    borderRadius: '16px',
+                    padding: '24px',
+                    maxWidth: '400px',
+                    width: '90%',
                   }}
                 >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => this.setState({ showInterruptGameModal: false })}
+                  <h2 style={{ fontSize: '18px', marginBottom: '8px' }}>
+                    {language === 'pl' ? 'Przerwać aktualną grę?' : 'Interrupt current game?'}
+                  </h2>
+                  <p style={{ marginBottom: '16px' }}>
+                    {language === 'pl'
+                      ? 'Gra zostanie przerwana, a obecny postęp w tej rundzie zostanie utracony.'
+                      : 'The current game will be stopped and your in-progress state for this round will be lost.'}
+                  </p>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      gap: '8px',
+                    }}
                   >
-                    {language === 'pl' ? 'Anuluj' : 'Cancel'}
-                  </Button>
-                  <Button
-                    colorScheme="blue"
-                    size="sm"
-                    onClick={() =>
-                      this.setState({
-                        showInterruptGameModal: false,
-                        route: 'progress',
-                      })
-                    }
-                  >
-                    {language === 'pl' ? 'Przejdź do postępu' : 'Go to progress'}
-                  </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => this.setState({ showInterruptGameModal: false })}
+                    >
+                      {language === 'pl' ? 'Anuluj' : 'Cancel'}
+                    </Button>
+                    <Button
+                      backgroundColor="blue"
+                      size="sm"
+                      onClick={() =>
+                        this.setState({
+                          showInterruptGameModal: false,
+                          route: 'progress',
+                        })
+                      }
+                    >
+                      {language === 'pl' ? 'Przejdź do postępu' : 'Go to progress'}
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </Box>
-      </Container>
+            )}
+          </Box>
+        </Container>
+      </div>
     );
   }
 }

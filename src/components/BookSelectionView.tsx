@@ -8,6 +8,7 @@ import type { Language } from '../i18n';
 import { translations } from '../i18n';
 import type { BookProgress } from '../storage/progressStorage';
 import { getGenreLabel } from './genreTranslations.ts';
+import type { GameType, GameRequest } from '../api/modelV2';
 
 type Props = {
   apiClient: ApiClient;
@@ -16,6 +17,7 @@ type Props = {
   booksLoading: boolean;
   progress: BookProgress[];
   onBookSelected(bookId: number, chapterIndex: number): void;
+  onGameRequest?(req: GameRequest): void;
   onResetBookProgress(bookId: number): void;
   onBack(): void;
 };
@@ -24,6 +26,8 @@ type SortColumn = 'title' | 'author' | 'year';
 type SortDirection = 'asc' | 'desc';
 
 type State = {
+  books: Book[];
+  booksLoading: boolean;
   searchQuery: string;
   sortColumn: SortColumn;
   sortDirection: SortDirection;
@@ -52,6 +56,8 @@ export class BookSelectionView extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = {
+      books: [],
+      booksLoading: true,
       searchQuery: '',
       sortColumn: 'title',
       sortDirection: 'asc',
@@ -101,6 +107,12 @@ export class BookSelectionView extends React.Component<Props, State> {
     });
   }
 
+  async componentDidMount() {
+    this.setState({ booksLoading: true });
+    const books = await this.props.apiClient.getBooks();
+    this.setState({ books, booksLoading: false });
+  }
+
   handleSortClick(column: SortColumn): void {
     this.setState((prev) => {
       if (prev.sortColumn === column) {
@@ -121,21 +133,29 @@ export class BookSelectionView extends React.Component<Props, State> {
 
     const book = this.props.books.find((b) => b.id === selectedBookId);
     const chapterCount = book?.chapters ?? 0;
-
     const bookProgress = this.props.progress.find((bp) => bp.bookId === selectedBookId);
     const completedCount = bookProgress?.chapters.filter((c) => c.completed).length ?? 0;
 
     let nextChapterIndex = 0;
-
     if (chapterCount > 0) {
       nextChapterIndex = completedCount;
-
       if (nextChapterIndex >= chapterCount) {
         nextChapterIndex = chapterCount - 1;
       }
     }
 
-    this.props.onBookSelected(selectedBookId, nextChapterIndex);
+    // Use selectedGameType from props or state if available, fallback to 'fill-gaps' as default
+    const gameType: GameType = (this.props as any).selectedGameType || 'fill-gaps';
+    const req: GameRequest = {
+      bookId: selectedBookId,
+      gameType,
+      chapter: nextChapterIndex ?? 0,
+    };
+    if (this.props.onGameRequest) {
+      this.props.onGameRequest(req);
+    } else {
+      this.props.onBookSelected(selectedBookId, nextChapterIndex);
+    }
   }
 
   handleChooseChapterClick(): void {
@@ -179,7 +199,8 @@ export class BookSelectionView extends React.Component<Props, State> {
   }
 
   private getBooksWithProgress(): Book[] {
-    const { books, progress } = this.props;
+    const { books } = this.state;
+    const { progress } = this.props;
     return books.map((b) => {
       const bookProgress = progress.find((bp) => bp.bookId === b.id);
       const completed = bookProgress?.chapters.filter((c) => c.completed).length ?? 0;
@@ -316,10 +337,20 @@ export class BookSelectionView extends React.Component<Props, State> {
 
     const bookProgress = this.props.progress.find((bp) => bp.bookId === selectedBookId);
     const completedCount = bookProgress?.chapters.filter((c) => c.completed).length ?? 0;
-
     const safeIndex = chapterModalSelectedIndex > completedCount ? completedCount : chapterModalSelectedIndex;
 
-    this.props.onBookSelected(selectedBookId, safeIndex);
+    // Use selectedGameType from props or state if available, fallback to 'fill-gaps' as default
+    const gameType: GameType = (this.props as any).selectedGameType || 'fill-gaps';
+    const req: GameRequest = {
+      bookId: selectedBookId,
+      gameType,
+      chapter: safeIndex ?? 0,
+    };
+    if (this.props.onGameRequest) {
+      this.props.onGameRequest(req);
+    } else {
+      this.props.onBookSelected(selectedBookId, safeIndex);
+    }
     this.setState({ chapterModalOpen: false });
   }
 
@@ -337,7 +368,8 @@ export class BookSelectionView extends React.Component<Props, State> {
       tempSelectedGenres,
       tempYearRange,
     } = this.state;
-    const { booksLoading, progress } = this.props;
+    const { booksLoading, books } = this.state;
+    const { progress } = this.props;
 
     const paginated = this.paginatedBooks;
     const totalBooks = this.filteredAndSortedBooksTotal;
@@ -345,15 +377,15 @@ export class BookSelectionView extends React.Component<Props, State> {
 
     const t = translations[this.props.language];
 
-    const years = this.props.books.map((b) => b.year);
+    const years = books.map((b) => b.year);
     const minYear = years.length > 0 ? Math.min(...years) : 1800;
     const maxYear = years.length > 0 ? Math.max(...years) : 2020;
     const effectiveTempYearRange = tempYearRange ?? [minYear, maxYear];
 
-    const uniqueAuthors = Array.from(new Set(this.props.books.map((b) => b.author))).sort();
-    const uniqueGenres = Array.from(new Set(this.props.books.map((b) => b.genre))).sort();
+    const uniqueAuthors = Array.from(new Set(books.map((b) => b.author))).sort();
+    const uniqueGenres = Array.from(new Set(books.map((b) => b.genre))).sort();
 
-    const selectedBook = this.props.books.find((b) => b.id === selectedBookId);
+    const selectedBook = books.find((b) => b.id === selectedBookId);
     const selectedBookProgress = progress.find((bp) => bp.bookId === selectedBookId);
     const completedForSelected = selectedBookProgress?.chapters.filter((c) => c.completed).length ?? 0;
     const chapterCount = selectedBook?.chapters ?? 0;
@@ -362,10 +394,19 @@ export class BookSelectionView extends React.Component<Props, State> {
       <Box
         position="relative"
         pb="80px"
+        maxW="900px"
+        mx="auto"
+        mt={8}
+        bg="white"
+        borderRadius="2xl"
+        boxShadow="lg"
+        p={8}
       >
         <Heading
           size="lg"
           mb={4}
+          color="green.600"
+          fontWeight="extrabold"
         >
           {t.chooseBookHeading}
         </Heading>
@@ -373,8 +414,9 @@ export class BookSelectionView extends React.Component<Props, State> {
         <Button
           size="sm"
           mb={4}
-          variant="ghost"
+          variant="outline"
           onClick={this.props.onBack}
+          borderRadius="full"
         >
           ← {t.back}
         </Button>
@@ -389,26 +431,39 @@ export class BookSelectionView extends React.Component<Props, State> {
             placeholder={t.searchBooksPlaceholder}
             value={searchQuery}
             onChange={this.handleSearchChange}
+            borderRadius="full"
+            bg="gray.50"
+            borderColor="gray.300"
           />
-          <Button onClick={this.openFilterModal}>{t.filterButton}</Button>
+          <Button
+            onClick={this.openFilterModal}
+            backgroundColor="#1e3932"
+            borderRadius="full"
+          >
+            {t.filterButton}
+          </Button>
         </Flex>
 
         {booksLoading && <Spinner />}
 
+
         <Box
           borderWidth="1px"
-          borderRadius="xl"
+          borderRadius="2xl"
           overflow="hidden"
           bg="white"
+          boxShadow="md"
         >
+          {!booksLoading && totalBooks > 0 && 
           <Box
             display="flex"
             px={4}
             py={2}
             borderBottomWidth="1px"
-            bg="gray.50"
+            bg="gray.100"
             fontWeight="bold"
-            fontSize="sm"
+            fontSize="md"
+            color="gray.700"
           >
             <Box
               flex="2"
@@ -434,9 +489,11 @@ export class BookSelectionView extends React.Component<Props, State> {
               {t.columnYear}
               {this.renderSortIndicator('year')}
             </Box>
-          </Box>
+          </Box>}
 
-          <Box
+         
+         {!booksLoading && totalBooks === 0 ? <Text p={4}>{t.noBooksFiltered}</Text> :    
+         <Box
             minH="260px"
             maxH="500px"
             overflowY="auto"
@@ -452,39 +509,34 @@ export class BookSelectionView extends React.Component<Props, State> {
                   py={3}
                   borderBottomWidth="1px"
                   cursor="pointer"
-                  _hover={{ bg: 'gray.50' }}
-                  bg={isSelected ? 'blue.50' : undefined}
+                  _hover={{ bg: 'gray.100' }}
+                  bg={isSelected ? 'blue.100' : undefined}
+                  borderRadius="xl"
+                  transition="background 0.2s"
                   onClick={() => this.handleRowClick(book)}
                 >
                   <Box flex="2">
-                    <Text fontWeight="medium">{book.title}</Text>
-                    <Text
-                      fontSize="sm"
-                      color="gray.500"
-                    >
+                    <Text fontWeight="bold" fontSize="lg" color="gray.800">{book.title}</Text>
+                    <Text fontSize="sm" color="gray.500" fontStyle="italic">
                       {getGenreLabel(book.genre, this.props.language)}
                     </Text>
-                    <Text
-                      fontSize="xs"
-                      color="gray.500"
-                      mt={1}
-                    >
+                    <Text fontSize="xs" color="gray.400" mt={1}>
                       {t.completedChaptersLabel}: {book.completedChapters}/{book.chapters}
                     </Text>
                   </Box>
                   <Box flex="2">
-                    <Text>{book.author}</Text>
+                    <Text fontWeight="medium" color="gray.700">{book.author}</Text>
                   </Box>
                   <Box flex="1">
-                    <Text>{book.year}</Text>
+                    <Text color="gray.600">{book.year}</Text>
                   </Box>
                 </Box>
               );
             })}
           </Box>
-        </Box>
+        } 
 
-        {!booksLoading && totalBooks === 0 && <Text mt={4}>{t.noBooksFiltered}</Text>}
+        </Box>
 
         {totalBooks > 0 && (
           <Flex
@@ -525,6 +577,7 @@ export class BookSelectionView extends React.Component<Props, State> {
             >
               <Button
                 size="sm"
+                backgroundColor="#1e3932"
                 onClick={() => this.handlePageChange('prev')}
                 disabled={currentPage === 1}
               >
@@ -534,6 +587,7 @@ export class BookSelectionView extends React.Component<Props, State> {
                 {this.props.language === 'pl' ? 'Strona' : 'Page'} {currentPage} / {totalPages}
               </Text>
               <Button
+                backgroundColor="#1e3932"
                 size="sm"
                 onClick={() => this.handlePageChange('next')}
                 disabled={currentPage === totalPages}
@@ -569,7 +623,7 @@ export class BookSelectionView extends React.Component<Props, State> {
               </Button>
               <Button
                 size="sm"
-                colorScheme="blue"
+                backgroundColor="#1e3932"
                 onClick={this.handleChooseChapterClick}
               >
                 {t.chooseChapterLabel}
@@ -627,7 +681,7 @@ export class BookSelectionView extends React.Component<Props, State> {
                     {t.startGameConfirmNo}
                   </Button>
                   <Button
-                    colorScheme="blue"
+                    backgroundColor="#1e3932"
                     onClick={() => {
                       const id = this.state.selectedBookId;
                       if (id !== null) {
@@ -702,6 +756,7 @@ export class BookSelectionView extends React.Component<Props, State> {
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '4px',
+                          accentColor: '#1e3932',
                           fontSize: '0.875rem',
                         }}
                       >
@@ -736,6 +791,7 @@ export class BookSelectionView extends React.Component<Props, State> {
                           alignItems: 'center',
                           gap: '4px',
                           fontSize: '0.875rem',
+                          accentColor: '#1e3932',
                         }}
                       >
                         <input
@@ -791,7 +847,7 @@ export class BookSelectionView extends React.Component<Props, State> {
                             };
                           });
                         }}
-                        style={{ width: '100%' }}
+                        style={{ width: '100%' , accentColor: '#1e3932' }}
                       />
                     </Box>
                     <Box flex="1">
@@ -817,7 +873,7 @@ export class BookSelectionView extends React.Component<Props, State> {
                             };
                           });
                         }}
-                        style={{ width: '100%' }}
+                        style={{ width: '100%', accentColor: '#1e3932' }}
                       />
                     </Box>
                   </Flex>
@@ -843,7 +899,7 @@ export class BookSelectionView extends React.Component<Props, State> {
                       {this.props.language === 'pl' ? 'Anuluj' : 'Cancel'}
                     </Button>
                     <Button
-                      colorScheme="blue"
+                      backgroundColor="#1e3932"
                       onClick={this.applyFilterChanges}
                     >
                       {this.props.language === 'pl' ? 'Filtruj' : 'Apply'}
@@ -948,7 +1004,7 @@ export class BookSelectionView extends React.Component<Props, State> {
                     {this.props.language === 'pl' ? 'Anuluj' : 'Cancel'}
                   </Button>
                   <Button
-                    colorScheme="blue"
+                    backgroundColor="#1e3932"
                     onClick={this.confirmChapterChoice}
                   >
                     {this.props.language === 'pl' ? 'Wybierz' : 'Select'}

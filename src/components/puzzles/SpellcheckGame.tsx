@@ -57,22 +57,27 @@ export const SpellcheckGame: React.FC<Props> = ({ riddle, selectedWordIds, onTog
             >
               {line.map((w, index) => {
                 const selected = selectedWordIds.includes(w.id);
-
                 return (
                   <React.Fragment key={w.id}>
-                    <Box
-                      as="button"
+                    <span
+                      style={{
+                        cursor: 'pointer',
+                        color: selected ? '#15803d' : undefined,
+                        background: selected ? '#d1fae5' : undefined,
+                        borderRadius: '4px',
+                        padding: '2px 2px',
+                        margin: '0 1px',
+                        fontWeight: 'normal',
+                        fontSize: '1rem',
+                        transition: 'background 0.2s',
+                        border: selected ? '1px solid #22c55e' : '1px solid transparent',
+                      }}
                       onClick={() => onToggleWord(w.id)}
-                      borderWidth="1px"
-                      borderColor={selected ? 'gray.400' : 'transparent'}
-                      bg={selected ? 'gray.100' : 'transparent'}
-                      _hover={{ bg: 'gray.100' }}
-                      borderRadius="md"
-                      px={1}
-                      display="inline"
+                      onMouseOver={e => { if (!selected) e.currentTarget.style.background = '#bbf7d0'; }}
+                      onMouseOut={e => { if (!selected) e.currentTarget.style.background = 'transparent'; }}
                     >
                       {w.value}
-                    </Box>
+                    </span>
                     {index < line.length - 1 && ' '}
                   </React.Fragment>
                 );

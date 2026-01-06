@@ -361,7 +361,7 @@ export class PuzzleView extends React.Component<Props, State> {
           <Button
             mt={4}
             onClick={this.handleFinishClick}
-            colorScheme="blue"
+            backgroundColor="#1e3932"
           >
             {t.finishButtonLabel}
           </Button>
@@ -406,7 +406,7 @@ export class PuzzleView extends React.Component<Props, State> {
                     : 'The game is paused. You can resume at any time.'}
                 </Text>
                 <Button
-                  colorScheme="blue"
+                  backgroundColor="#1e3932"
                   onClick={() => this.handleResume()}
                 >
                   {t.resumeLabel}
@@ -461,7 +461,7 @@ export class PuzzleView extends React.Component<Props, State> {
                     {t.finishEarlyCancel}
                   </Button>
                   <Button
-                    colorScheme="blue"
+                    backgroundColor="#1e3932"
                     onClick={() => this.finishInternal()}
                   >
                     {t.finishEarlyConfirm}

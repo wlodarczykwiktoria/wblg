@@ -365,7 +365,7 @@ export class AnagramView extends React.Component<Props, State> {
           <Button
             mt={4}
             onClick={this.handleFinishClick}
-            colorScheme="blue"
+            backgroundColor="#1e3932"
           >
             {t.finishButtonLabel}
           </Button>
@@ -407,7 +407,6 @@ export class AnagramView extends React.Component<Props, State> {
                 </Heading>
                 <Text mb={6}>{t.anagramPauseMessage}</Text>
                 <Button
-                  colorScheme="blue"
                   onClick={this.handleResume}
                 >
                   {t.resumeLabel}
@@ -462,7 +461,6 @@ export class AnagramView extends React.Component<Props, State> {
                     {t.finishEarlyCancel}
                   </Button>
                   <Button
-                    colorScheme="blue"
                     onClick={() => {
                       this.setState({ showFinishConfirm: false }, () => this.finishInternal());
                     }}

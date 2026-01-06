@@ -123,27 +123,31 @@ export class FillGapsGame extends React.Component<Props, State> {
                 </Text>
               );
             }
-
             return (
               <Box
                 as="span"
                 key={part.id}
                 onDrop={(e) => this.handleDropOnGap(e, part.id)}
                 onDragOver={this.handleDragOverGap}
-                borderWidth="2px"
+                borderWidth="1px"
                 borderStyle="dashed"
-                borderRadius="md"
-                borderColor="green.200"
+                borderRadius="xl"
+                borderColor="green.300"
                 bg="green.50"
                 px={3}
-                py={2}
-                mx={1}
+                py={1}
+                my={1}
+                mx={2}
                 minW="80px"
                 display="inline-flex"
                 justifyContent="center"
                 alignItems="center"
+                fontSize="md"
+                fontWeight="normal"
+                color="green.700"
+                transition="background 0.2s"
               >
-                <Text fontWeight="semibold">{this.renderGapContent(part.id)}</Text>
+                <Text fontWeight="normal">{this.renderGapContent(part.id)}</Text>
               </Box>
             );
           })}
@@ -154,7 +158,7 @@ export class FillGapsGame extends React.Component<Props, State> {
           borderRadius="2xl"
           boxShadow="md"
           px={8}
-          py={6}
+          py={8}
         >
           <Text
             mb={3}
@@ -162,23 +166,27 @@ export class FillGapsGame extends React.Component<Props, State> {
           >
             {t.chooseWordsLabel}
           </Text>
-          <Wrap>
+          <Wrap justify="center">
             {availableOptions.map((opt) => (
               <WrapItem key={opt.id}>
                 <Box
                   as="button"
                   draggable
                   onDragStart={(e) => this.handleDragStartWord(e, opt.id)}
-                  px={6}
-                  py={3}
+                  px={5}
+                  py={2}
                   borderWidth="1px"
                   borderRadius="full"
                   bg="gray.50"
-                  boxShadow="sm"
+                  boxShadow="none"
                   cursor="grab"
                   userSelect="none"
-                  _hover={{ bg: 'gray.100', transform: 'translateY(-1px)' }}
+                  fontSize="md"
+                  fontWeight="normal"
+                  color="gray.800"
+                  _hover={{ bg: 'gray.100', transform: 'translateY(-2px)' }}
                   _active={{ transform: 'translateY(0)' }}
+                  transition="background 0.2s"
                 >
                   {opt.label}
                 </Box>

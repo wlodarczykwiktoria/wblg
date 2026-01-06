@@ -111,7 +111,7 @@ const MOCK_EXTRACTS_BY_BOOK: Record<number, Extract[]> = {
   8: [{ id: 801, orderNo: 1, title: 'Fragment 1' }],
 };
 
-const MOCK_GAMES: Game[] = [
+const GAMES: Game[] = [
   {
     id: 1,
     code: GameCode.FillTheGaps,
@@ -223,28 +223,37 @@ const SWITCH_RIDDLES: SwitchRiddle[] = Array.from({ length: 5 }).map(() => switc
 const CHOICE_RIDDLES: ChoiceRiddle[] = Array.from({ length: 5 }).map(() => choiceMockResponse.riddle);
 
 export class ApiClient {
-  constructor(private readonly baseUrl: string = '') {}
+  constructor(private readonly baseUrl: string = 'https://wblg.vercel.app') {
+  }
 
   async getGames(): Promise<Game[]> {
-    return Promise.resolve(MOCK_GAMES);
+    return Promise.resolve(GAMES);
   }
 
   async getBooks(): Promise<Book[]> {
+    console.log("co do fiutta");
+    console.log(this.baseUrl);
     if (this.baseUrl) {
       try {
+        console.log("halooo");
         const res = await fetch(`${this.baseUrl}/books`, {
           method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
         });
         if (!res.ok) {
+          // fallback to mock if backend fails
           return MOCK_BOOKS;
         }
         const data = (await res.json()) as Book[];
         return data;
-      } catch {
+      } catch (err) {
+        // fallback to mock if fetch errors
         return MOCK_BOOKS;
       }
     }
-
+    // fallback to mock if no baseUrl
     return Promise.resolve(MOCK_BOOKS);
   }
 
