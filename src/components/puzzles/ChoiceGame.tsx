@@ -115,7 +115,6 @@ export const ChoiceGame: React.FC<Props> = ({
                   key={opt.id}
                   size="sm"
                   variant={isSelected ? 'solid' : 'outline'}
-                  colorScheme="green"
                   onClick={() => onSelectOption(activeGap.id, opt.id)}
                 >
                   {opt.label}

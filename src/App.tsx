@@ -7,8 +7,6 @@ import type { GameResults } from './gameTypes.ts';
 import type { Book, GameType } from './api/modelV2.ts';
 import {
   type BookProgress,
-  ensureProgressForBooks,
-  loadProgress,
   resetProgressForBook,
   updateProgressForChapter,
 } from './storage/progressStorage.ts';
