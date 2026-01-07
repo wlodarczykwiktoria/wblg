@@ -9,14 +9,12 @@ export type ChapterProgress = {
   title: string;
   numberLabel: string;
   scorePercent: number;
-  mistakes: number;
   timeSeconds: number;
   completed: boolean;
 };
 
 export type BookProgress = {
   bookId: number;
-  title: string;
   chapters: ChapterProgress[];
 };
 
@@ -52,7 +50,6 @@ function createEmptyChapters(book: Book): ChapterProgress[] {
       title: `Chapter ${index + 1}`,
       numberLabel,
       scorePercent: 0,
-      mistakes: 0,
       timeSeconds: 0,
       completed: false,
     });
@@ -122,7 +119,6 @@ export function updateProgressForChapter(
     chapters[chapterIndex] = {
       ...base,
       scorePercent: results.score,
-      mistakes: results.totalMistakes,
       timeSeconds: results.timeSeconds,
       completed: true,
     };

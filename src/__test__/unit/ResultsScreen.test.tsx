@@ -30,7 +30,6 @@ function renderResultsScreen(overrides: Partial<GameResults> = {}) {
     <ChakraProvider value={defaultSystem}>
       <ResultsScreen
         language="en"
-        results={results}
         onPlayAgain={onPlayAgain}
         onNextExtract={onNextExtract}
         onBackToLibrary={onBackToLibrary}

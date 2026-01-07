@@ -1,5 +1,34 @@
 // ===== Użytkownik / Książki =====
 
+export type ResultsLatestResponse = ResultsLatestBookItem[];
+
+export type ResultsLatestBookItem = {
+  book: {
+    book_id: number;
+    title: string;
+    author: string;
+    genre: string;
+  };
+  stats: {
+    total_chapters: number;
+    completed_chapters: number;
+  };
+  chapters: ResultsLatestChapterItem[];
+};
+
+export type ResultsLatestChapterItem = {
+  extract_id: number;
+  extract_no: number;
+  extract_title: string;
+  completed: boolean;
+  result: null | {
+    result_id: number;
+    puzzle_type: string;
+    score: number;
+    duration_sec: number;
+  };
+};
+
 export interface BookRequest {
   userId: string;
 }
@@ -42,11 +71,12 @@ export interface ResultRequest {
 }
 
 export interface ResultResponse {
-  score: number; // końcowy wynik (np. w procentach)
-  mistakes: number; // liczba błędnych odpowiedzi
-  time: string; // czas gry w formacie mm:ss
-  accuracy: number; // dokładność, np. 0.87
-  pagesCompleted: number; // liczba ukończonych "stron" / ekranów
+  result_id: number;
+  book_id: number;
+  extract_id: number;
+  puzzle_type: GameType;
+  score: number;
+  duration_sec: number;
 }
 
 // ===== GRA 1 – Fill (uzupełnianie luk) =====

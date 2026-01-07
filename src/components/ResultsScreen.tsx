@@ -8,7 +8,6 @@ import { translations } from '../i18n';
 
 type Props = {
   language: Language;
-  results: GameResults;
   onPlayAgain(): void;
   onNextExtract(): void;
   onBackToLibrary(): void;
@@ -24,14 +23,22 @@ function formatTime(seconds: number): string {
 
 export class ResultsScreen extends React.Component<Props> {
   render() {
-    const { results, language } = this.props;
+    const { language } = this.props;
     const t = translations[language];
+    const gameResults: GameResults = {
+      score: 80,
+      accuracy: 0.95,
+      totalMistakes: 2,
+      totalPuzzles: 5,
+      completedPuzzles: 5,
+      timeSeconds: 123,
+    };
 
-    const accuracyPercent = Math.round(results.accuracy * 100);
-    const score = results.score;
-    const mistakes = results.totalMistakes;
-    const timeText = formatTime(results.timeSeconds);
-    const pagesCompleted = `${results.completedPuzzles}/${results.totalPuzzles}`;
+    const accuracyPercent = Math.round(gameResults.accuracy * 100);
+    const score = gameResults.score;
+    const mistakes = gameResults.totalMistakes;
+    const timeText = formatTime(gameResults.timeSeconds);
+    const pagesCompleted = `${gameResults.completedPuzzles}/${gameResults.totalPuzzles}`;
 
     return (
       <Box

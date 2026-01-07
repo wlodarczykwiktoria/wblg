@@ -46,6 +46,8 @@ type AppState = {
 
 export class App extends React.Component<unknown, AppState> {
   private readonly apiClient: ApiClient;
+  static sessionUuid: string | null = null;
+  sessionUuid: string | null = null;
 
   constructor(props: unknown) {
     super(props);
@@ -81,9 +83,36 @@ export class App extends React.Component<unknown, AppState> {
     this.handleBackToLibraryFromResults = this.handleBackToLibraryFromResults.bind(this);
     this.handleOpenProgress = this.handleOpenProgress.bind(this);
     this.handleResetBookProgress = this.handleResetBookProgress.bind(this);
+    this.ensureSessionUuid = this.ensureSessionUuid.bind(this);
   }
 
-  componentDidMount(): void {
+  async ensureSessionUuid(): Promise<string> {
+    let sessionUuid = localStorage.getItem('session_id');
+    if (sessionUuid) {
+      App.sessionUuid = sessionUuid;
+      this.sessionUuid = sessionUuid;
+      return sessionUuid;
+    }
+
+    const res = await fetch('https://wblg-backend-1007953962746.europe-west1.run.app/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error('Failed to create session');
+    const data = await res.json();
+    sessionUuid = data.session_id;
+
+    if (sessionUuid) {
+      localStorage.setItem('session_id', sessionUuid);
+      App.sessionUuid = sessionUuid;
+      this.sessionUuid = sessionUuid;
+      return sessionUuid;
+    }
+    throw new Error('No session_id returned from backend');
+  }
+
+  async componentDidMount() {
+    await this.ensureSessionUuid();
     void this.loadBooksAndProgress();
   }
 
@@ -254,7 +283,6 @@ export class App extends React.Component<unknown, AppState> {
       selectedExtractId,
       selectedGameType,
       language,
-      results,
       books,
       booksLoading,
       progress,
@@ -387,11 +415,10 @@ export class App extends React.Component<unknown, AppState> {
       }
     }
 
-    if (route === 'results' && results) {
+    if (route === 'results') {
       return (
         <ResultsScreen
           language={language}
-          results={results}
           onPlayAgain={this.handlePlayAgain}
           onNextExtract={this.handleNextExtract}
           onBackToLibrary={this.handleBackToLibraryFromResults}
@@ -512,7 +539,6 @@ export class App extends React.Component<unknown, AppState> {
                       {language === 'pl' ? 'Anuluj' : 'Cancel'}
                     </Button>
                     <Button
-                      backgroundColor="blue"
                       size="sm"
                       onClick={() =>
                         this.setState({
