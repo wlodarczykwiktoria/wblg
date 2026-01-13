@@ -251,8 +251,14 @@ export class SpellcheckView extends React.Component<Props, State> {
             size="md"
             mt={2}
           >
-            {t.puzzleHeading}
+            {t.spellcheckHeading}
           </Heading>
+          <Text
+              fontSize="sm"
+              color="gray.600"
+          >
+            {t.spellcheckInstructions}
+          </Text>
 
           <SpellcheckGame
             riddle={riddle}

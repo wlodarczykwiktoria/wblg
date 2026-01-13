@@ -383,6 +383,12 @@ export class PuzzleView extends React.Component<Props, State> {
           >
             {t.puzzleHeading}
           </Heading>
+          <Text
+              fontSize="sm"
+              color="gray.600"
+          >
+            {t.puzzleInstruction}
+          </Text>
 
           <FillGapsGame
             key={riddle.id}

@@ -245,8 +245,14 @@ export class AnagramView extends React.Component<Props, State> {
             size="md"
             mt={2}
           >
-            {t.puzzleHeading}
+            {t.anagramHeading}
           </Heading>
+          <Text
+              fontSize="sm"
+              color="gray.600"
+          >
+            {t.anagramInstructions}
+          </Text>
 
           <AnagramGame
             riddle={riddle}

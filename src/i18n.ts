@@ -41,6 +41,7 @@ export type Translations = {
   chapterTimeLabel: string;
 
   puzzleHeading: string;
+  puzzleInstruction: string;
   chooseWordsLabel: string;
   resetLabel: string;
   prevPuzzleLabel: string;
@@ -151,6 +152,7 @@ export const translations: Record<Language, Translations> = {
     chapterNotCompletedLabel: 'Not completed yet',
 
     puzzleHeading: 'Fill in the missing words',
+    puzzleInstruction: 'Drag the correct words from the pool and drop them into the matching gaps in the text.',
     chooseWordsLabel: 'Choose the correct words:',
     resetLabel: 'Reset',
     prevPuzzleLabel: 'Previous',
@@ -253,6 +255,7 @@ export const translations: Record<Language, Translations> = {
     chapterNotCompletedLabel: 'Jeszcze nieukończony',
 
     puzzleHeading: 'Uzupełnij brakujące słowa',
+    puzzleInstruction: 'Przeciągnij odpowiednie słowa z puli i upuść je w pasujących lukach w tekście.',
     chooseWordsLabel: 'Wybierz właściwe słowa:',
     resetLabel: 'Reset',
     prevPuzzleLabel: 'Poprzednie',

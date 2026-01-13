@@ -308,8 +308,14 @@ export class ChoiceView extends React.Component<Props, State> {
             size="md"
             mt={2}
           >
-            {t.puzzleHeading}
+            {t.choiceHeading}
           </Heading>
+          <Text
+              fontSize="sm"
+              color="gray.600"
+          >
+            {t.choiceInstructions}
+          </Text>
 
           <ChoiceGame
             riddle={riddle}
