@@ -62,7 +62,6 @@ export function updateProgressForChapter(
         title: `Chapter ${chapterIndex + 1}`,
         numberLabel: `${chapterIndex + 1} / ${book.chapters}`,
         scorePercent: 0,
-        mistakes: 0,
         timeSeconds: 0,
         completed: false,
       };

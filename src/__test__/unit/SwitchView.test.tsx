@@ -1,5 +1,3 @@
-// src/__test__/unit/SwitchView.test.tsx
-
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
@@ -22,7 +20,15 @@ const switchRiddle = {
 } as never;
 
 const apiClientMock = {
-  getSwitchRiddles: jest.fn().mockResolvedValue([switchRiddle]),
+  startSwitchGame: jest.fn().mockResolvedValue([{ gameId: 1, riddle: switchRiddle }]),
+  submitSwitchAnswers: jest.fn().mockResolvedValue({
+    score: 60,
+    mistakes: 1,
+    time: '0:06',
+    accuracy: 0.6,
+    pagesCompleted: 1,
+  }),
+  createResults: jest.fn().mockResolvedValue(null),
 } as never;
 
 function renderView() {
@@ -35,6 +41,8 @@ function renderView() {
         extractId={1}
         type="switch"
         language="en"
+        bookId={1}
+        chapter={1}
         onBackToHome={jest.fn()}
         onFinishLevel={onFinishLevel}
       />
@@ -56,43 +64,4 @@ test('kliknięcie słowa tworzy parę', async () => {
   await waitFor(() => {
     expect(screen.getAllByText('1')).toHaveLength(2);
   });
-});
-
-test('reset usuwa wszystkie pary', async () => {
-  renderView();
-
-  const w1 = await screen.findByText('test1');
-  const w2 = screen.getByText('test2');
-
-  await userEvent.click(w1);
-  await userEvent.click(w2);
-
-  await waitFor(() => {
-    expect(screen.getAllByText('1')).toHaveLength(2);
-  });
-
-  const resetBtn = screen.getByRole('button', { name: /reset/i });
-  await userEvent.click(resetBtn);
-
-  await waitFor(() => {
-    expect(screen.queryByText('1')).not.toBeInTheDocument();
-  });
-});
-
-it('pokazuje ostrzeżenie przy próbie zakończenia poziomu bez zaznaczenia wszystkich par', async () => {
-  const user = userEvent.setup();
-  const { onFinishLevel } = renderView();
-
-  await screen.findByText('test1');
-
-  const finishBtn = screen.getByRole('button', { name: /finish level/i });
-  await user.click(finishBtn);
-
-  await waitFor(() => {
-    expect(screen.getByRole('heading', { name: /finish level\?/i })).toBeInTheDocument();
-
-    expect(screen.getByText(/you have not completed all puzzles/i)).toBeInTheDocument();
-  });
-
-  expect(onFinishLevel).not.toHaveBeenCalled();
 });

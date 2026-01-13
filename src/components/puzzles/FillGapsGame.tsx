@@ -100,7 +100,7 @@ export class FillGapsGame extends React.Component<Props, State> {
     const availableOptions = this.availableOptions;
     const t = translations[this.props.language];
 
-    const gapOffset = this.props.gapOffset ?? 0; // ✅ default
+    const gapOffset = this.props.gapOffset ?? 0;
     let localGapCounter = 0;
 
     return (

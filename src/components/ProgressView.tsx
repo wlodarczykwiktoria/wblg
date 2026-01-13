@@ -202,7 +202,7 @@ export class ProgressView extends React.Component<Props, State> {
         display="flex"
         alignItems="center"
         justifyContent="center"
-        onClick={this.closeModal} // klik w tło zamyka
+        onClick={this.closeModal}
       >
         <Box
           bg="white"
@@ -213,7 +213,7 @@ export class ProgressView extends React.Component<Props, State> {
           width="min(720px, 92vw)"
           maxH="85vh"
           overflowY="auto"
-          onClick={(e) => e.stopPropagation()} // klik w kartę nie zamyka
+          onClick={(e) => e.stopPropagation()}
           textAlign="center"
         >
           <Heading size="md" mb={2} color="green.600" fontWeight="extrabold">

@@ -1,5 +1,3 @@
-// src/__test__/unit/ResultsScreen.test.tsx
-
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
@@ -30,6 +28,7 @@ function renderResultsScreen(overrides: Partial<GameResults> = {}) {
     <ChakraProvider value={defaultSystem}>
       <ResultsScreen
         language="en"
+        results={results}
         onPlayAgain={onPlayAgain}
         onNextExtract={onNextExtract}
         onBackToLibrary={onBackToLibrary}
@@ -45,7 +44,6 @@ describe('ResultsScreen', () => {
     renderResultsScreen();
 
     expect(screen.getByRole('heading', { name: /excellent work!/i })).toBeInTheDocument();
-
     expect(screen.getByText(/you've completed the exercise successfully\./i)).toBeInTheDocument();
   });
 

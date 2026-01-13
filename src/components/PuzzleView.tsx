@@ -40,12 +40,10 @@ type State = {
   fillGapsGameId: number | null;
 };
 
-// ---------- GLOBAL GAP HELPERS (ważne!) ----------
 function countGaps(riddle: Riddle): number {
   return riddle.prompt.parts.filter((p) => p.type === 'gap').length;
 }
 
-// offsety: puzzle0 -> 0, puzzle1 -> liczba gapów z puzzle0, itd.
 function buildGapOffsets(riddles: Riddle[]): number[] {
   const offsets: number[] = [];
   let sum = 0;
@@ -56,7 +54,6 @@ function buildGapOffsets(riddles: Riddle[]): number[] {
   return offsets;
 }
 
-// globalne ID dla gapów: gap-(offset + 1..N) dla danego puzzla
 function getGlobalGapIds(riddle: Riddle, gapOffset: number): string[] {
   let local = 0;
 
@@ -69,7 +66,6 @@ function getGlobalGapIds(riddle: Riddle, gapOffset: number): string[] {
     })
     .filter((x): x is string => x !== null);
 }
-// -----------------------------------------------
 
 export class PuzzleView extends React.Component<Props, State> {
   private timerId: number | null = null;
@@ -204,14 +200,17 @@ export class PuzzleView extends React.Component<Props, State> {
       return;
     }
 
-    const payloadAnswers = answersPerPuzzle.flatMap((answersMap) =>
-      Object.entries(answersMap)
-        .filter(([, optionId]) => optionId != null)
-        .map(([gapId, optionId]) => ({
-          gapIndex: Number(String(gapId).replace('gap-', '')),
-          optionId: String(optionId),
-        })),
-    );
+    const payloadAnswers = answersPerPuzzle.reduce<{ gapIndex: number; optionId: string }[]>((acc, answersMap) => {
+      Object.entries(answersMap).forEach(([gapId, optionId]) => {
+        if (optionId != null) {
+          acc.push({
+            gapIndex: Number(String(gapId).replace('gap-', '')),
+            optionId: String(optionId),
+          });
+        }
+      });
+      return acc;
+    }, []);
 
     const payload: FillGapsAnswerRequest = {
       type: 'fill-gaps',
@@ -237,7 +236,6 @@ export class PuzzleView extends React.Component<Props, State> {
 
     const sessionId = localStorage.getItem('session_id');
     if (!sessionId) throw new Error('No session_id in localStorage (session not created yet)');
-
 
     try {
       const saved = await this.props.apiClient.createResults(resultsBody, sessionId);
@@ -324,7 +322,12 @@ export class PuzzleView extends React.Component<Props, State> {
     if (loading || riddles.length === 0) {
       return (
         <Box>
-          <Button size="sm" mb={4} variant="ghost" onClick={this.props.onBackToHome}>
+          <Button
+            size="sm"
+            mb={4}
+            variant="ghost"
+            onClick={this.props.onBackToHome}
+          >
             ← {t.back}
           </Button>
           <Spinner />
@@ -343,15 +346,29 @@ export class PuzzleView extends React.Component<Props, State> {
     const feedbackText = feedbackKey === 'needAll' ? t.needAnswerAllLabel : null;
 
     return (
-      <Box position="relative" maxW="5xl" mx="auto">
+      <Box
+        position="relative"
+        maxW="5xl"
+        mx="auto"
+      >
         <Stack>
-          <Flex justify="right" align="center">
-            <Button size="sm" variant="outline" onClick={this.handlePause}>
+          <Flex
+            justify="right"
+            align="center"
+          >
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={this.handlePause}
+            >
               {t.pauseLabel}
             </Button>
           </Flex>
 
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align="center"
+          >
             <Heading size="sm">
               {t.puzzleOfLabel} {currentIndex + 1}/{riddles.length}
             </Heading>
@@ -360,7 +377,10 @@ export class PuzzleView extends React.Component<Props, State> {
             </Text>
           </Flex>
 
-          <Heading size="md" mt={2}>
+          <Heading
+            size="md"
+            mt={2}
+          >
             {t.puzzleHeading}
           </Heading>
 
@@ -369,36 +389,83 @@ export class PuzzleView extends React.Component<Props, State> {
             riddle={riddle}
             language={this.props.language}
             initialAnswers={currentAnswers}
-            gapOffset={currentGapOffset} // ✅ tu przekazujemy offset globalny
+            gapOffset={currentGapOffset}
             onChange={(answers) => this.handleAnswersChange(currentIndex, answers)}
           />
 
           {feedbackText && (
-            <Box borderWidth="1px" borderRadius="md" p={3} bg="red.50">
+            <Box
+              borderWidth="1px"
+              borderRadius="md"
+              p={3}
+              bg="red.50"
+            >
               <Text>{feedbackText}</Text>
             </Box>
           )}
 
-          <Flex justify="space-between" mt={2}>
-            <Button size="sm" variant="outline" onClick={this.goPrev} disabled={currentIndex === 0}>
+          <Flex
+            justify="space-between"
+            mt={2}
+          >
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={this.goPrev}
+              disabled={currentIndex === 0}
+            >
               ← {t.prevPuzzleLabel}
             </Button>
-            <Button size="sm" variant="outline" onClick={this.goNext} disabled={currentIndex === riddles.length - 1}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={this.goNext}
+              disabled={currentIndex === riddles.length - 1}
+            >
               {t.nextPuzzleLabel} →
             </Button>
           </Flex>
 
-          <Button mt={4} onClick={this.handleFinishClick} backgroundColor="#1e3932">
+          <Button
+            mt={4}
+            onClick={this.handleFinishClick}
+            backgroundColor="#1e3932"
+          >
             {t.finishButtonLabel}
           </Button>
         </Stack>
 
         {showPauseModal && (
-          <Box position="fixed" inset={0} bg="blackAlpha.500" backdropFilter="blur(4px)" zIndex={1400}>
-            <Flex h="100%" align="center" justify="center">
-              <Box bg="white" borderRadius="xl" p={6} maxW="sm" w="90%" position="relative">
-                <CloseButton position="absolute" right={3} top={3} onClick={() => this.handleResume()} />
-                <Heading size="md" mb={3}>
+          <Box
+            position="fixed"
+            inset={0}
+            bg="blackAlpha.500"
+            backdropFilter="blur(4px)"
+            zIndex={1400}
+          >
+            <Flex
+              h="100%"
+              align="center"
+              justify="center"
+            >
+              <Box
+                bg="white"
+                borderRadius="xl"
+                p={6}
+                maxW="sm"
+                w="90%"
+                position="relative"
+              >
+                <CloseButton
+                  position="absolute"
+                  right={3}
+                  top={3}
+                  onClick={() => this.handleResume()}
+                />
+                <Heading
+                  size="md"
+                  mb={3}
+                >
                   {t.pauseLabel}
                 </Heading>
                 <Text mb={6}>
@@ -406,7 +473,10 @@ export class PuzzleView extends React.Component<Props, State> {
                     ? 'Gra jest wstrzymana. Możesz w każdej chwili wznowić.'
                     : 'The game is paused. You can resume at any time.'}
                 </Text>
-                <Button backgroundColor="#1e3932" onClick={() => this.handleResume()}>
+                <Button
+                  backgroundColor="#1e3932"
+                  onClick={() => this.handleResume()}
+                >
                   {t.resumeLabel}
                 </Button>
               </Box>
@@ -415,19 +485,53 @@ export class PuzzleView extends React.Component<Props, State> {
         )}
 
         {showFinishConfirm && (
-          <Box position="fixed" inset={0} bg="blackAlpha.500" backdropFilter="blur(4px)" zIndex={1400}>
-            <Flex h="100%" align="center" justify="center">
-              <Box bg="white" borderRadius="xl" p={6} maxW="sm" w="90%" position="relative">
-                <CloseButton position="absolute" right={3} top={3} onClick={() => this.setState({ showFinishConfirm: false })} />
-                <Heading size="md" mb={3}>
+          <Box
+            position="fixed"
+            inset={0}
+            bg="blackAlpha.500"
+            backdropFilter="blur(4px)"
+            zIndex={1400}
+          >
+            <Flex
+              h="100%"
+              align="center"
+              justify="center"
+            >
+              <Box
+                bg="white"
+                borderRadius="xl"
+                p={6}
+                maxW="sm"
+                w="90%"
+                position="relative"
+              >
+                <CloseButton
+                  position="absolute"
+                  right={3}
+                  top={3}
+                  onClick={() => this.setState({ showFinishConfirm: false })}
+                />
+                <Heading
+                  size="md"
+                  mb={3}
+                >
                   {t.finishEarlyTitle}
                 </Heading>
                 <Text mb={6}>{t.finishEarlyMessage}</Text>
-                <Flex justify="flex-end" gap={3}>
-                  <Button variant="outline" onClick={() => this.setState({ showFinishConfirm: false })}>
+                <Flex
+                  justify="flex-end"
+                  gap={3}
+                >
+                  <Button
+                    variant="outline"
+                    onClick={() => this.setState({ showFinishConfirm: false })}
+                  >
                     {t.finishEarlyCancel}
                   </Button>
-                  <Button backgroundColor="#1e3932" onClick={() => this.finishInternal()}>
+                  <Button
+                    backgroundColor="#1e3932"
+                    onClick={() => this.finishInternal()}
+                  >
                     {t.finishEarlyConfirm}
                   </Button>
                 </Flex>

@@ -1,7 +1,7 @@
 // src/components/App.tsx
 
 import React from 'react';
-import { Box, Button, Container, Flex, Heading, NativeSelect, Spacer } from '@chakra-ui/react';
+import { Box, Button, Container, Flex, Heading, NativeSelect, Spacer, Input, Text, Spinner } from '@chakra-ui/react';
 import { type Language, translations } from './i18n.ts';
 import type { GameResults } from './gameTypes.ts';
 import type { Book, GameType } from './api/modelV2.ts';
@@ -38,6 +38,11 @@ type AppState = {
   booksLoading: boolean;
   progress: BookProgress[];
   showInterruptGameModal: boolean;
+
+  showNickModal: boolean;
+  nickInput: string;
+  nickError: string | null;
+  creatingSession: boolean;
 };
 
 //TODO move to some global service one day
@@ -67,6 +72,11 @@ export class App extends React.Component<unknown, AppState> {
       booksLoading: true,
       progress: [],
       showInterruptGameModal: false,
+
+      showNickModal: false,
+      nickInput: '',
+      nickError: null,
+      creatingSession: false,
     };
 
     this.apiClient = new ApiClient('https://wblg-backend-1007953962746.europe-west1.run.app');
@@ -84,41 +94,43 @@ export class App extends React.Component<unknown, AppState> {
     this.handleBackToLibraryFromResults = this.handleBackToLibraryFromResults.bind(this);
     this.handleOpenProgress = this.handleOpenProgress.bind(this);
     this.handleResetBookProgress = this.handleResetBookProgress.bind(this);
-    this.ensureSessionUuid = this.ensureSessionUuid.bind(this);
+    this.submitNickAndCreateSession = this.submitNickAndCreateSession.bind(this);
   }
 
-  async ensureSessionUuid(): Promise<string> {
-    let sessionUuid = localStorage.getItem('session_id');
-    if (sessionUuid) {
-      App.sessionUuid = sessionUuid;
-      this.sessionUuid = sessionUuid;
-      return sessionUuid;
-    }
+  private setSession(sessionUuid: string) {
+    localStorage.setItem('session_id', sessionUuid);
+    App.sessionUuid = sessionUuid;
+    this.sessionUuid = sessionUuid;
+  }
 
+  private async createSessionWithNick(nick: string): Promise<string> {
     const res = await fetch('https://wblg-backend-1007953962746.europe-west1.run.app/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nick }),
     });
+
     if (!res.ok) throw new Error('Failed to create session');
     const data = await res.json();
-    sessionUuid = data.session_id;
-
-    if (sessionUuid) {
-      localStorage.setItem('session_id', sessionUuid);
-      App.sessionUuid = sessionUuid;
-      this.sessionUuid = sessionUuid;
-      return sessionUuid;
-    }
-    throw new Error('No session_id returned from backend');
+    const sessionUuid = data.session_id as string | undefined;
+    if (!sessionUuid) throw new Error('No session_id returned from backend');
+    return sessionUuid;
   }
 
   async componentDidMount() {
-    await this.ensureSessionUuid();
-    void this.loadBooksAndProgress();
+    const existing = localStorage.getItem('session_id');
+    if (existing) {
+      this.setSession(existing);
+      void this.loadBooksAndProgress();
+      return;
+    }
+
+    this.setState({ showNickModal: true, booksLoading: false });
   }
 
   async loadBooksAndProgress(): Promise<void> {
     this.setState({ booksLoading: true });
+    this.setState({ booksLoading: false });
   }
 
   getRandomGameType(): GameType {
@@ -272,6 +284,38 @@ export class App extends React.Component<unknown, AppState> {
     });
   }
 
+  async submitNickAndCreateSession(): Promise<void> {
+    const nick = this.state.nickInput.trim();
+
+    if (nick.length === 0) {
+      this.setState({ nickError: this.state.language === 'pl' ? 'Podaj imię.' : 'Please enter your name.' });
+      return;
+    }
+
+    if (nick.length > 50) {
+      this.setState({
+        nickError: this.state.language === 'pl' ? 'Maksymalnie 50 znaków.' : 'Max 50 characters.',
+      });
+      return;
+    }
+
+    try {
+      this.setState({ creatingSession: true, nickError: null });
+
+      const sessionUuid = await this.createSessionWithNick(nick);
+      this.setSession(sessionUuid);
+
+      this.setState({ showNickModal: false, creatingSession: false });
+      void this.loadBooksAndProgress();
+    } catch (e) {
+      console.error(e);
+      this.setState({
+        creatingSession: false,
+        nickError: this.state.language === 'pl' ? 'Nie udało się utworzyć sesji.' : 'Failed to create session.',
+      });
+    }
+  }
+
   renderCurrentView() {
     const {
       route,
@@ -285,7 +329,7 @@ export class App extends React.Component<unknown, AppState> {
       progress,
     } = this.state;
 
-      if (route === 'home') {
+    if (route === 'home') {
       return (
         <HomeView
           language={language}
@@ -446,8 +490,117 @@ export class App extends React.Component<unknown, AppState> {
     );
   }
 
+  renderNickModal() {
+    const { language, nickInput, nickError, creatingSession } = this.state;
+
+    const title = `Hey, What's your name?`;
+    const placeholder = 'Enter your name…';
+    const buttonText = creatingSession ? 'Creating session…' : "Let's go";
+
+    return (
+      <Box
+        position="fixed"
+        inset={0}
+        bg="blackAlpha.600"
+        backdropFilter="blur(6px)"
+        zIndex={9999}
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Box
+          bg="white"
+          borderRadius="2xl"
+          boxShadow="2xl"
+          p={8}
+          width="min(520px, 92vw)"
+          border="1px solid #e2e8f0"
+          textAlign="center"
+        >
+          <Heading
+            size="md"
+            mb={3}
+            color="green.600"
+            fontWeight="extrabold"
+          >
+            {title}
+          </Heading>
+
+          <Text
+            fontSize="sm"
+            color="gray.600"
+            mb={6}
+          >
+            {language === 'pl'
+              ? 'To pomoże nam spersonalizować Twoje wyniki.'
+              : 'This helps us personalize your results.'}
+          </Text>
+
+          <Input
+            value={nickInput}
+            onChange={(e) => this.setState({ nickInput: e.target.value, nickError: null })}
+            maxLength={50}
+            placeholder={placeholder}
+            size="lg"
+            borderRadius="xl"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void this.submitNickAndCreateSession();
+            }}
+          />
+
+          <Flex
+            justify="space-between"
+            mt={2}
+          >
+            <Text
+              fontSize="xs"
+              color="gray.500"
+            >
+              {nickInput.length}/50
+            </Text>
+            {creatingSession && (
+              <Flex
+                align="center"
+                gap={2}
+              >
+                <Spinner size="sm" />
+                <Text
+                  fontSize="xs"
+                  color="gray.500"
+                >
+                  {language === 'pl' ? 'Łączenie…' : 'Connecting…'}
+                </Text>
+              </Flex>
+            )}
+          </Flex>
+
+          {nickError && (
+            <Text
+              mt={3}
+              fontSize="sm"
+              color="red.500"
+            >
+              {nickError}
+            </Text>
+          )}
+
+          <Button
+            mt={6}
+            width="100%"
+            backgroundColor="#1e3932"
+            color="white"
+            disabled={creatingSession}
+            onClick={() => void this.submitNickAndCreateSession()}
+          >
+            {buttonText}
+          </Button>
+        </Box>
+      </Box>
+    );
+  }
+
   render() {
-    const { language, showInterruptGameModal } = this.state;
+    const { language, showInterruptGameModal, showNickModal } = this.state;
     const t = translations[language];
 
     return (
@@ -568,6 +721,8 @@ export class App extends React.Component<unknown, AppState> {
             )}
           </Box>
         </Container>
+
+        {showNickModal && this.renderNickModal()}
       </div>
     );
   }

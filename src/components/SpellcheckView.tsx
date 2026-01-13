@@ -135,7 +135,7 @@ export class SpellcheckView extends React.Component<Props, State> {
       return;
     }
 
-    const selectedWordIds = selectedPerPuzzle.flatMap((arr) => arr);
+    const selectedWordIds = selectedPerPuzzle.reduce<string[]>((acc, arr) => acc.concat(arr), []);
 
     const payload: SpellcheckAnswerRequest = {
       type: 'spellcheck',

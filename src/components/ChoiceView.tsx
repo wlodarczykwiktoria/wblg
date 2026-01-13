@@ -180,11 +180,12 @@ export class ChoiceView extends React.Component<Props, State> {
       return;
     }
 
-    const answers = selectedPerPuzzle.flatMap((m) =>
-      Object.entries(m)
-        .filter(([, optionId]) => optionId != null)
-        .map(([gapId, optionId]) => ({ gapId, optionId: String(optionId) })),
-    );
+    const answers = selectedPerPuzzle.reduce<{ gapId: string; optionId: string }[]>((acc, m) => {
+      Object.entries(m).forEach(([gapId, optionId]) => {
+        if (optionId != null) acc.push({ gapId, optionId: String(optionId) });
+      });
+      return acc;
+    }, []);
 
     const payload: ChoiceAnswerRequest = {
       type: 'choice',

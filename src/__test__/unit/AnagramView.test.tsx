@@ -1,5 +1,3 @@
-// src/__test__/unit/AnagramView.test.tsx
-
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
@@ -19,7 +17,15 @@ const anagramRiddle = {
 } as never;
 
 const apiClientMock = {
-  getAnagramRiddles: jest.fn().mockResolvedValue([anagramRiddle]),
+  startAnagramGame: jest.fn().mockResolvedValue([{ gameId: 1, riddle: anagramRiddle }]),
+  submitAnagramAnswers: jest.fn().mockResolvedValue({
+    score: 80,
+    mistakes: 1,
+    time: '0:10',
+    accuracy: 0.8,
+    pagesCompleted: 1,
+  }),
+  createResults: jest.fn().mockResolvedValue(null),
 } as never;
 
 function renderView() {
@@ -32,6 +38,8 @@ function renderView() {
         extractId={1}
         type="anagram"
         language="en"
+        bookId={1}
+        chapter={1}
         onBackToHome={jest.fn()}
         onFinishLevel={onFinishLevel}
       />
@@ -45,7 +53,6 @@ test('kliknięcie słowa zaznacza je', async () => {
   renderView();
 
   const badWord = await screen.findByText('Ltiwo,');
-
   await userEvent.click(badWord);
 
   await waitFor(() => {

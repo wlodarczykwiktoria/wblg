@@ -225,7 +225,7 @@ export class SwitchView extends React.Component<Props, State> {
       return;
     }
 
-    const selectedPairs = selectedPairsPerPuzzle.flatMap((arr) => arr);
+    const selectedPairs = selectedPairsPerPuzzle.reduce<SelectedSwitchPair[]>((acc, arr) => acc.concat(arr), []);
 
     const payload: SwitchAnswerRequest = {
       type: 'switch',

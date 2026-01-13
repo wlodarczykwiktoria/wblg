@@ -137,7 +137,7 @@ export class AnagramView extends React.Component<Props, State> {
       return;
     }
 
-    const selectedWordIds = selectedPerPuzzle.flatMap((arr) => arr);
+    const selectedWordIds = selectedPerPuzzle.reduce<string[]>((acc, arr) => acc.concat(arr), []);
 
     const payload: AnagramAnswerRequest = {
       type: 'anagram',

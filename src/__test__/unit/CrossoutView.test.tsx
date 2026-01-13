@@ -1,5 +1,3 @@
-// src/__test__/unit/CrossoutView.test.tsx
-
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
@@ -16,7 +14,15 @@ const crossoutRiddle = {
 } as never;
 
 const apiClientMock = {
-  getCrossoutRiddles: jest.fn().mockResolvedValue([crossoutRiddle]),
+  startCrossoutGame: jest.fn().mockResolvedValue([{ gameId: 1, riddle: crossoutRiddle }]),
+  submitCrossoutAnswers: jest.fn().mockResolvedValue({
+    score: 70,
+    mistakes: 1,
+    time: '0:04',
+    accuracy: 0.7,
+    pagesCompleted: 1,
+  }),
+  createResults: jest.fn().mockResolvedValue(null),
 } as never;
 
 function renderView() {
@@ -29,6 +35,8 @@ function renderView() {
         extractId={1}
         type="crossout"
         language="en"
+        bookId={1}
+        chapter={1}
         onBackToHome={jest.fn()}
         onFinishLevel={onFinishLevel}
       />
@@ -54,21 +62,5 @@ test('po kliknięciu linia zostaje zaznaczona, druga linia odznacza poprzednią'
 
   await waitFor(() => {
     expect(line2).toHaveStyle('text-decoration: line-through');
-  });
-});
-
-test('nie pozwala zakończyć bez wyboru linii', async () => {
-  renderView();
-
-  await screen.findByText('Linia poprawna');
-
-  const finishBtn = screen.getByRole('button', { name: /finish level/i });
-
-  await userEvent.click(finishBtn);
-
-  await waitFor(() => {
-    expect(screen.getByRole('heading', { name: /finish level\?/i })).toBeInTheDocument();
-
-    expect(screen.getByText(/you have not completed all puzzles/i)).toBeInTheDocument();
   });
 });

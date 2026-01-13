@@ -1,5 +1,3 @@
-// src/__test__/unit/App.home.test.tsx
-
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
@@ -19,6 +17,8 @@ jest.mock('../../api/ApiClient', () => {
 });
 
 function renderApp() {
+  localStorage.setItem('session_id', 'test-session');
+
   return render(
     <ChakraProvider value={defaultSystem}>
       <App />

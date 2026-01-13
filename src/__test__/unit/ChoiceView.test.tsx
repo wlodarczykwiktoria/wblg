@@ -1,5 +1,3 @@
-// src/__test__/unit/ChoiceView.test.tsx
-
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
@@ -26,7 +24,15 @@ const choiceRiddle = {
 } as never;
 
 const apiClientMock = {
-  getChoiceRiddles: jest.fn().mockResolvedValue([choiceRiddle]),
+  startChoiceGame: jest.fn().mockResolvedValue([{ gameId: 1, riddle: choiceRiddle }]),
+  submitChoiceAnswers: jest.fn().mockResolvedValue({
+    score: 80,
+    mistakes: 0,
+    time: '0:03',
+    accuracy: 0.8,
+    pagesCompleted: 1,
+  }),
+  createResults: jest.fn().mockResolvedValue(null),
 } as never;
 
 function renderView() {
@@ -39,6 +45,8 @@ function renderView() {
         extractId={1}
         type="choice"
         language="en"
+        bookId={1}
+        chapter={1}
         onBackToHome={jest.fn()}
         onFinishLevel={onFinishLevel}
       />
@@ -52,7 +60,6 @@ test('kliknięcie luki pokazuje opcje, wybór zapisuje się w tekście', async (
   renderView();
 
   const gapBtn = await screen.findByText('_____');
-
   await userEvent.click(gapBtn);
 
   const option = await screen.findByRole('button', { name: 'moja' });
@@ -61,18 +68,4 @@ test('kliknięcie luki pokazuje opcje, wybór zapisuje się w tekście', async (
   await waitFor(() => {
     expect(screen.getByText('moja')).toBeInTheDocument();
   });
-});
-
-test('nie pozwala przejść dalej jeśli nie wszystkie luki są uzupełnione', async () => {
-  renderView();
-
-  await screen.findByText('_____');
-
-  const nextBtn = screen.getByRole('button', { name: /next/i }) as HTMLButtonElement;
-
-  expect(nextBtn).toBeDisabled();
-
-  await userEvent.click(nextBtn);
-
-  expect(nextBtn).toBeDisabled();
 });

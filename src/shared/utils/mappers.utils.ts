@@ -20,7 +20,7 @@ export function mapSubmitToGameResults(r: GameAnswerResponse, totalPuzzles: numb
   return {
     score: r.score,
     accuracy: r.accuracy,
-    totalMistakes: r.mistakes,
+    totalMistakes: r.mistakes || 0,
     completedPuzzles: r.pagesCompleted,
     totalPuzzles,
     timeSeconds: parseTimeToSeconds(r.time),

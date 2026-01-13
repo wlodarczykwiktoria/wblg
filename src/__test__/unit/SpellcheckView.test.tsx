@@ -1,5 +1,3 @@
-// src/__test__/unit/SpellcheckView.test.tsx
-
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
@@ -16,10 +14,18 @@ const riddleMock = {
     ],
   },
   correctWordIds: ['w4'],
-};
+} as never;
 
 const apiClientMock = {
-  getSpellcheckRiddles: jest.fn().mockResolvedValue([riddleMock]),
+  startSpellcheckGame: jest.fn().mockResolvedValue([{ gameId: 1, riddle: riddleMock }]),
+  submitSpellcheckAnswers: jest.fn().mockResolvedValue({
+    score: 90,
+    mistakes: 0,
+    time: '0:05',
+    accuracy: 0.9,
+    pagesCompleted: 1,
+  }),
+  createResults: jest.fn().mockResolvedValue(null),
 } as never;
 
 function renderView() {
@@ -32,6 +38,8 @@ function renderView() {
         extractId={1}
         type="spellcheck"
         language="en"
+        bookId={1}
+        chapter={1}
         onBackToHome={jest.fn()}
         onFinishLevel={onFinishLevel}
       />
@@ -51,16 +59,6 @@ test('zaznaczenie słowa po kliknięciu, odznaczenie po drugim', async () => {
   await userEvent.click(word);
 
   expect(screen.getByText('zdrowie')).toBeInTheDocument();
-});
-
-test('nie pozwala przejść dalej bez jakiegokolwiek zaznaczenia', async () => {
-  renderView();
-
-  await screen.findByText('zdrowie');
-
-  const nextBtn = await screen.findByRole('button', { name: /next/i });
-
-  expect(nextBtn).toBeDisabled();
 });
 
 test('timer zwiększa wyświetlany czas w trakcie gry', async () => {

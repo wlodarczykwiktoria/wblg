@@ -1,51 +1,68 @@
-// src/__test__/unit/BookSelectionView.test.tsx
-import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
-import { BookSelectionView } from '../../components/BookSelectionView';
 
-const BookSelectionViewAny = BookSelectionView as React.ComponentType<any>;
+import { BookSelectionView } from '../../components/BookSelectionView';
 
 const sampleBooks = [
   {
     id: 1,
+    title: 'Solaris',
+    author: 'Stanisław Lem',
+    year: 1961,
+    genre: 'Science fiction',
+    chapters: 10,
+    completedChapters: 0,
+  },
+  { id: 2, title: 'Lalka', author: 'Bolesław Prus', year: 1890, genre: 'Novel', chapters: 10, completedChapters: 0 },
+  {
+    id: 3,
     title: 'Pan Tadeusz',
     author: 'Adam Mickiewicz',
     year: 1834,
-  },
-  {
-    id: 2,
-    title: 'Lalka',
-    author: 'Bolesław Prus',
-    year: 1890,
-  },
-  {
-    id: 3,
-    title: 'Potop',
-    author: 'Henryk Sienkiewicz',
-    year: 1886,
+    genre: 'Epic poem',
+    chapters: 10,
+    completedChapters: 0,
   },
 ];
 
-const sampleProgress = [
-  {
-    bookId: 1,
-    chapters: [{ completed: true }, { completed: false }],
-  },
-  {
-    bookId: 2,
-    chapters: [],
-  },
-  {
-    bookId: 3,
-    chapters: [{ completed: true }],
-  },
-];
+const sampleProgress: any[] = [];
 
-const BOOK_TITLES = ['Lalka', 'Pan Tadeusz', 'Potop'];
-const BOOK_AUTHORS = ['Bolesław Prus', 'Adam Mickiewicz', 'Henryk Sienkiewicz'];
-const BOOK_YEARS = ['1890', '1834', '1886'];
+const BOOK_TITLES = sampleBooks.map((b) => b.title);
+const BOOK_AUTHORS = sampleBooks.map((b) => b.author);
+const BOOK_YEARS = sampleBooks.map((b) => String(b.year));
+
+function renderView() {
+  const onBookSelected = jest.fn();
+
+  const apiClientMock: any = {
+    getBooks: jest.fn().mockResolvedValue(sampleBooks),
+    getExtracts: jest.fn().mockResolvedValue([]),
+  };
+
+  render(
+    <ChakraProvider value={defaultSystem}>
+      <BookSelectionView
+        apiClient={apiClientMock}
+        language="en"
+        books={[]}
+        booksLoading={false}
+        progress={sampleProgress}
+        onBookSelected={onBookSelected}
+        onResetBookProgress={jest.fn()}
+        onBack={jest.fn()}
+      />
+    </ChakraProvider>,
+  );
+
+  return { apiClientMock, onBookSelected };
+}
+
+async function waitForBooksToRender() {
+  await screen.findByText('Solaris');
+  await screen.findByText('Lalka');
+  await screen.findByText('Pan Tadeusz');
+}
 
 function getTitleOrder(): string[] {
   const nodes = screen.getAllByText((content, node) => {
@@ -71,65 +88,57 @@ function getYearOrder(): string[] {
   return nodes.map((n) => n.textContent?.trim() ?? '');
 }
 
-function renderBooks(overrides: Record<string, unknown> = {}) {
-  const onBookSelected = jest.fn();
+describe('BookSelectionView', () => {
+  test('renderuje listę książek po załadowaniu', async () => {
+    const { apiClientMock } = renderView();
 
-  const props = {
-    language: 'en',
-    onBookSelected,
-    onBackToHome: jest.fn(),
-    books: sampleBooks,
-    progress: sampleProgress,
-    ...overrides,
-  };
+    await waitFor(() => expect(apiClientMock.getBooks).toHaveBeenCalledTimes(1));
+    await waitForBooksToRender();
 
-  render(
-    <ChakraProvider value={defaultSystem}>
-      <BookSelectionViewAny {...props} />
-    </ChakraProvider>,
-  );
+    expect(screen.getByText('Solaris')).toBeInTheDocument();
+    expect(screen.getByText('Lalka')).toBeInTheDocument();
+    expect(screen.getByText('Pan Tadeusz')).toBeInTheDocument();
+  });
 
-  return { onBookSelected };
-}
+  test('sortuje listę książek po roku po kliknięciu nagłówka "Year"', async () => {
+    renderView();
+    await waitForBooksToRender();
 
-test('sortuje listę książek po roku po kliknięciu nagłówka "Year"', async () => {
-  renderBooks();
+    const before = getYearOrder();
 
-  const yearsBefore = getYearOrder();
-  expect(yearsBefore.length).toBeGreaterThan(1);
+    const yearHeader = screen.getByText(/year/i);
+    await userEvent.click(yearHeader);
 
-  const yearHeader = screen.getByText(/year/i);
-  await userEvent.click(yearHeader);
+    const after = getYearOrder();
 
-  const yearsAfter = getYearOrder();
+    expect(after).not.toEqual(before);
+  });
 
-  expect(yearsAfter.join(' | ')).not.toEqual(yearsBefore.join(' | '));
-});
+  test('sortuje listę książek po autorze po kliknięciu nagłówka "Author"', async () => {
+    renderView();
+    await waitForBooksToRender();
 
-test('sortuje listę książek po autorze po kliknięciu nagłówka "Author"', async () => {
-  renderBooks();
+    const before = getAuthorOrder();
 
-  const authorsBefore = getAuthorOrder();
-  expect(authorsBefore.length).toBeGreaterThan(1);
+    const authorHeader = screen.getByText(/author/i);
+    await userEvent.click(authorHeader);
 
-  const authorHeader = screen.getByText(/author/i);
-  await userEvent.click(authorHeader);
+    const after = getAuthorOrder();
 
-  const authorsAfter = getAuthorOrder();
+    expect(after).not.toEqual(before);
+  });
 
-  expect(authorsAfter.join(' | ')).not.toEqual(authorsBefore.join(' | '));
-});
+  test('sortuje listę książek po tytule po kliknięciu nagłówka "Title"', async () => {
+    renderView();
+    await waitForBooksToRender();
 
-test('sortuje listę książek po tytule po kliknięciu nagłówka "Title"', async () => {
-  renderBooks();
+    const before = getTitleOrder();
 
-  const titlesBefore = getTitleOrder();
-  expect(titlesBefore.length).toBeGreaterThan(1);
+    const titleHeader = screen.getByText(/title/i);
+    await userEvent.click(titleHeader);
 
-  const titleHeader = screen.getByText(/title/i);
-  await userEvent.click(titleHeader);
+    const after = getTitleOrder();
 
-  const titlesAfter = getTitleOrder();
-
-  expect(titlesAfter.join(' | ')).not.toEqual(titlesBefore.join(' | '));
+    expect(after).not.toEqual(before);
+  });
 });

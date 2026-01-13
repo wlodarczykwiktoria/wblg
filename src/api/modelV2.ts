@@ -52,7 +52,7 @@ export interface BookChapterResultsResponse {
   chapters: number;
   completedChapters: number;
   score: number;
-  mistakes: number;
+  mistakes?: number
   time: string;
 }
 
@@ -210,7 +210,7 @@ export interface FillGapAnswer {
 
 export interface GameAnswerResponse {
   score: number;
-  mistakes: number;
+  mistakes?: number;
   time: string;
   accuracy: number;
   pagesCompleted: number;
@@ -284,7 +284,7 @@ export interface ResultsCreateRequest {
   played_at: string;
   accuracy: number;
   pagesCompleted: number;
-  mistakes: number;
+  mistakes?: number;
 }
 
 // =====================================================================

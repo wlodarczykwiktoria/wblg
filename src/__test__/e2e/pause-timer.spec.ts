@@ -1,7 +1,17 @@
-// src/__test__/e2e/pause-timer.spec.ts
 import { test, expect, type Page } from '@playwright/test';
 
 const baseURL = 'http://localhost:5173';
+
+async function selectFirstBookFromList(page: Page) {
+  const firstProgressCell = page.locator('text=/\\d+\\s*\\/\\s*\\d+/').first();
+  await expect(firstProgressCell).toBeVisible({ timeout: 20_000 });
+  await firstProgressCell.click();
+}
+
+async function waitForGameScreen(page: Page) {
+  await expect(page.getByRole('button', { name: /pause/i })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/time left|czas/i)).toBeVisible({ timeout: 30_000 });
+}
 
 test.describe('Timer i pauza w grze', () => {
   test.setTimeout(60_000);
@@ -13,24 +23,23 @@ test.describe('Timer i pauza w grze', () => {
     await expect(page.getByRole('heading', { name: /choose game/i })).toBeVisible();
 
     await page.getByRole('button', { name: /spellcheck/i }).click();
-
     await expect(page.getByRole('heading', { name: /choose book/i })).toBeVisible();
 
-    await page.getByText('Pan Tadeusz').click();
+    await selectFirstBookFromList(page);
 
     await page.getByRole('button', { name: /start game/i }).click();
 
-    await expect(page.getByRole('heading', { name: /find the words with mistakes/i })).toBeVisible();
+    await waitForGameScreen(page);
   }
 
   test('timer "rośnie" w trakcie gry', async ({ page }) => {
     await startSpellcheckGame(page);
 
-    const timeLabel = page.getByText(/time:\s*\d+:\d{2}/i);
-    const before = await timeLabel.innerText();
+    const timeNode = page.locator('text=/\\d+:\\d{2}/').first();
+    const before = await timeNode.innerText();
 
     await page.waitForTimeout(3000);
-    const after = await timeLabel.innerText();
+    const after = await timeNode.innerText();
 
     expect(after).not.toEqual(before);
   });
@@ -38,21 +47,21 @@ test.describe('Timer i pauza w grze', () => {
   test('pauza zatrzymuje timer', async ({ page }) => {
     await startSpellcheckGame(page);
 
-    const timeLabel = page.getByText(/time:\s*\d+:\d{2}/i);
+    const timeNode = page.locator('text=/\\d+:\\d{2}/').first();
 
     await page.waitForTimeout(3000);
-    const beforePause = await timeLabel.innerText();
+    const beforePause = await timeNode.innerText();
 
     await page.getByRole('button', { name: /pause/i }).click();
 
     await page.waitForTimeout(3000);
-    const duringPause = await timeLabel.innerText();
+    const duringPause = await timeNode.innerText();
     expect(duringPause).toEqual(beforePause);
 
     await page.getByRole('button', { name: /resume/i }).click();
 
     await page.waitForTimeout(3000);
-    const afterResume = await timeLabel.innerText();
+    const afterResume = await timeNode.innerText();
     expect(afterResume).not.toEqual(duringPause);
   });
 });

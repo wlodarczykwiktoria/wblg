@@ -138,7 +138,7 @@ export class CrossoutView extends React.Component<Props, State> {
       return;
     }
 
-    const crossedOutLineIds = selectedLineIdsPerPuzzle.flatMap((arr) => arr);
+    const crossedOutLineIds = selectedLineIdsPerPuzzle.reduce<string[]>((acc, arr) => acc.concat(arr), []);
 
     const payload: CrossoutAnswerRequest = {
       type: 'crossout',

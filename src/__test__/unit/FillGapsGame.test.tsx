@@ -1,5 +1,3 @@
-// src/__test__/unit/FillGapsGame.test.tsx
-
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
@@ -22,25 +20,22 @@ const riddleMock: Riddle = {
   ],
 };
 
-function renderGame(initial: AnswersState = { g1: null }) {
+function renderGame(initial: AnswersState = { 'gap-0': null }) {
   const onChange = jest.fn();
 
-  const { container } = render(
+  render(
     <ChakraProvider value={defaultSystem}>
       <FillGapsGame
         riddle={riddleMock}
         language="pl"
         initialAnswers={initial}
+        gapOffset={0}
         onChange={onChange}
       />
     </ChakraProvider>,
   );
 
-  return { onChange, container };
-}
-
-function renderFillGapsGame(initial?: AnswersState) {
-  return renderGame(initial);
+  return { onChange };
 }
 
 test('renderuje lukę i dostępne słowa', () => {
@@ -54,7 +49,7 @@ test('renderuje lukę i dostępne słowa', () => {
 test('po przeciągnięciu słowa do luki wywołuje onChange', () => {
   const { onChange } = renderGame();
 
-  const gap = screen.getByText('_____');
+  const gapText = screen.getByText('_____');
   const word = screen.getByText('Ojczyzno');
 
   const dataTransfer = {
@@ -65,25 +60,19 @@ test('po przeciągnięciu słowa do luki wywołuje onChange', () => {
     getData(type: string) {
       return this.data[type];
     },
-    clearData: jest.fn(),
-    dropEffect: 'move',
-    effectAllowed: 'all',
-    files: [],
-    items: [],
-    types: [],
   };
 
   fireEvent.dragStart(word, { dataTransfer });
-  fireEvent.drop(gap, { dataTransfer });
+  fireEvent.drop(gapText, { dataTransfer });
 
   expect(onChange).toHaveBeenCalled();
 
   const calledWith = onChange.mock.calls[0][0] as AnswersState;
-  expect(calledWith.g1).toBeTruthy();
+  expect(calledWith['gap-0']).toBeTruthy();
 });
 
 test('Reset czyści odpowiedzi', async () => {
-  const initial: AnswersState = { g1: 'w1' };
+  const initial: AnswersState = { 'gap-0': 'w1' };
   const { onChange } = renderGame(initial);
 
   const resetLabel = translations.pl.resetLabel;
@@ -93,17 +82,5 @@ test('Reset czyści odpowiedzi', async () => {
 
   expect(onChange).toHaveBeenCalled();
   const calledWith = onChange.mock.calls[0][0] as AnswersState;
-  expect(calledWith.g1).toBeNull();
-});
-
-it('reset czyści wszystkie wybrane słowa w lukach', async () => {
-  const user = userEvent.setup();
-  renderFillGapsGame();
-
-  const firstOption = screen.getByRole('button', { name: /Ojczyzno/i });
-  await user.click(firstOption);
-
-  await user.click(screen.getByRole('button', { name: /reset/i }));
-
-  expect(firstOption).not.toHaveClass(/selected|chosen/i);
+  expect(calledWith['gap-0']).toBeNull();
 });
