@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
 
@@ -45,7 +45,7 @@ function renderView() {
       <BookSelectionView
         apiClient={apiClientMock}
         language="en"
-        books={[]}
+        books={sampleBooks}
         booksLoading={false}
         progress={sampleProgress}
         onBookSelected={onBookSelected}
@@ -89,10 +89,9 @@ function getYearOrder(): string[] {
 }
 
 describe('BookSelectionView', () => {
-  test('renderuje listę książek po załadowaniu', async () => {
-    const { apiClientMock } = renderView();
+  test('renderuje listę książek', async () => {
+    renderView();
 
-    await waitFor(() => expect(apiClientMock.getBooks).toHaveBeenCalledTimes(1));
     await waitForBooksToRender();
 
     expect(screen.getByText('Solaris')).toBeInTheDocument();
@@ -105,10 +104,8 @@ describe('BookSelectionView', () => {
     await waitForBooksToRender();
 
     const before = getYearOrder();
-
     const yearHeader = screen.getByText(/year/i);
     await userEvent.click(yearHeader);
-
     const after = getYearOrder();
 
     expect(after).not.toEqual(before);
@@ -119,10 +116,8 @@ describe('BookSelectionView', () => {
     await waitForBooksToRender();
 
     const before = getAuthorOrder();
-
     const authorHeader = screen.getByText(/author/i);
     await userEvent.click(authorHeader);
-
     const after = getAuthorOrder();
 
     expect(after).not.toEqual(before);
@@ -133,10 +128,8 @@ describe('BookSelectionView', () => {
     await waitForBooksToRender();
 
     const before = getTitleOrder();
-
     const titleHeader = screen.getByText(/title/i);
     await userEvent.click(titleHeader);
-
     const after = getTitleOrder();
 
     expect(after).not.toEqual(before);

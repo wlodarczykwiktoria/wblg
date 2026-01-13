@@ -41,7 +41,8 @@ function splitIntoLines(words: RiddleWord[]): RiddleWord[][] {
 
   if (lines.length > MAX_LINES) {
     const head = lines.slice(0, MAX_LINES - 1);
-    const tailMerged = lines.slice(MAX_LINES - 1).flat();
+    const tailMerged = lines.slice(MAX_LINES - 1).reduce<RiddleWord[]>((acc, line) => acc.concat(line), []);
+
     return [...head, tailMerged];
   }
 

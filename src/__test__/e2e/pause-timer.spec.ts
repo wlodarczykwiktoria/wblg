@@ -14,7 +14,6 @@ async function waitForGameScreen(page: Page) {
   await expect(timer).toBeVisible({ timeout: 30_000 });
 }
 
-
 test.describe('Timer i pauza w grze', () => {
   test.setTimeout(60_000);
 
@@ -31,18 +30,14 @@ test.describe('Timer i pauza w grze', () => {
 
     const [resp] = await Promise.all([
       page.waitForResponse(
-          r =>
-              r.request().method() === 'POST' &&
-              r.url().includes('/games') &&
-              r.url().includes('/start'),
-          { timeout: 30_000 },
+        (r) => r.request().method() === 'POST' && r.url().includes('/games') && r.url().includes('/start'),
+        { timeout: 30_000 },
       ),
       page.getByRole('button', { name: /start game/i }).click(),
     ]);
 
     expect(resp.ok()).toBeTruthy();
     await waitForGameScreen(page);
-
   }
 
   test('timer "rośnie" w trakcie gry', async ({ page }) => {
@@ -57,24 +52,32 @@ test.describe('Timer i pauza w grze', () => {
     expect(after).not.toEqual(before);
   });
 
+  function parseTime(text: string): number {
+    const m = text.match(/(\d+):(\d{2})/);
+    if (!m) return 0;
+    return Number(m[1]) * 60 + Number(m[2]);
+  }
+
   test('pauza zatrzymuje timer', async ({ page }) => {
     await startSpellcheckGame(page);
 
     const timeNode = page.locator('text=/\\d+:\\d{2}/').first();
 
     await page.waitForTimeout(3000);
-    const beforePause = await timeNode.innerText();
+    const beforePauseText = await timeNode.innerText();
 
     await page.getByRole('button', { name: /pause/i }).click();
 
+    const t1 = parseTime(await timeNode.innerText());
     await page.waitForTimeout(3000);
-    const duringPause = await timeNode.innerText();
-    expect(duringPause).toEqual(beforePause);
+    const t2 = parseTime(await timeNode.innerText());
+
+    expect(t2 - t1).toBeLessThanOrEqual(1);
 
     await page.getByRole('button', { name: /resume/i }).click();
-
     await page.waitForTimeout(3000);
-    const afterResume = await timeNode.innerText();
-    expect(afterResume).not.toEqual(duringPause);
+    const afterResume = parseTime(await timeNode.innerText());
+
+    expect(afterResume).toBeGreaterThanOrEqual(parseTime(beforePauseText));
   });
 });

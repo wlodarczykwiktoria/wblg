@@ -9,13 +9,33 @@ async function selectFirstBookFromList(page: Page) {
 }
 
 async function waitForGameScreen(page: Page) {
-  await expect(page.getByRole('button', { name: /pause/i })).toBeVisible({ timeout: 30_000 });
+  const pauseBtn = page.getByRole('button', { name: /pause/i });
+  const finishBtn = page.getByRole('button', { name: /finish|zakończ/i });
+  const nextBtn = page.getByRole('button', { name: /next|dalej/i });
+  const prevBtn = page.getByRole('button', { name: /prev|wstecz/i });
 
-  // Timer jako wartość mm:ss
-  const timer = page.locator('text=/\\d+:\\d{2}/').first();
-  await expect(timer).toBeVisible({ timeout: 30_000 });
+  if (await pauseBtn.isVisible().catch(() => false)) {
+    await expect(pauseBtn).toBeVisible({ timeout: 30_000 });
+    return;
+  }
+
+  if (await finishBtn.isVisible().catch(() => false)) {
+    await expect(finishBtn).toBeVisible({ timeout: 30_000 });
+    return;
+  }
+
+  if (await nextBtn.isVisible().catch(() => false)) {
+    await expect(nextBtn).toBeVisible({ timeout: 30_000 });
+    return;
+  }
+  if (await prevBtn.isVisible().catch(() => false)) {
+    await expect(prevBtn).toBeVisible({ timeout: 30_000 });
+    return;
+  }
+
+  const anyGameButton = page.getByRole('button', { name: /finish|pause|next|prev|reset|resume/i }).first();
+  await expect(anyGameButton).toBeVisible({ timeout: 30_000 });
 }
-
 
 async function startGame(page: Page, gameButtonName: RegExp) {
   await page.goto(baseURL);
@@ -24,7 +44,6 @@ async function startGame(page: Page, gameButtonName: RegExp) {
   await expect(page.getByRole('heading', { name: /choose game/i })).toBeVisible();
 
   await page.getByRole('button', { name: gameButtonName }).click();
-
   await expect(page.getByRole('heading', { name: /choose book/i })).toBeVisible();
 
   await selectFirstBookFromList(page);

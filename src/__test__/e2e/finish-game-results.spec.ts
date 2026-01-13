@@ -29,16 +29,13 @@ test.describe('Finish -> Results', () => {
         await page.getByRole('button', { name: /start game/i }).click();
         await waitForGameScreen(page);
 
-        // Kliknij Finish
         await page.getByRole('button', { name: /finish/i }).click();
 
-        // Jeśli pojawi się modal, potwierdź
         const modalTitle = page.getByText(/finish level\?/i);
         if (await modalTitle.isVisible().catch(() => false)) {
             await page.getByRole('button', { name: /yes,\s*finish anyway/i }).click();
         }
 
-        // ResultsScreen: na pewno powinien zniknąć Pause, a pojawić się Back to library
         await expect(page.getByRole('button', { name: /pause/i })).toHaveCount(0);
 
         await expect(

@@ -38,7 +38,8 @@ function splitIntoLines(words: RiddleWord[]): RiddleWord[][] {
 
   if (lines.length > MAX_LINES) {
     const head = lines.slice(0, MAX_LINES - 1);
-    const tailMerged = lines.slice(MAX_LINES - 1).flat();
+    const tailMerged = lines.slice(MAX_LINES - 1).reduce<RiddleWord[]>((acc, line) => acc.concat(line), []);
+
     return [...head, tailMerged];
   }
 
@@ -90,8 +91,7 @@ export const AnagramGame: React.FC<Props> = ({ riddle, selectedWordIds, onToggle
                       boxShadow="none"
                       transition="background 0.2s"
                       display="inline"
-                      style={{ padding: '2px 2px', margin: '0 1px' }}  
-
+                      style={{ padding: '2px 2px', margin: '0 1px' }}
                     >
                       {displayValue}
                     </Box>
