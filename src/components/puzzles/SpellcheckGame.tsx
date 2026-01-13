@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Box, Text, VStack } from '@chakra-ui/react';
-import type { SpellcheckRiddle, RiddleWord } from '../../api/modelV2';
+import type { RiddleWord, SpellcheckRiddle } from '../../api/modelV2';
 
 type Props = {
   riddle: SpellcheckRiddle;
@@ -10,26 +10,36 @@ type Props = {
   onToggleWord(wordId: string): void;
 };
 
-const BREAK_AFTER_INDICES = [7, 15, 24];
+const MAX_LINES = 4;
 
 function splitIntoLines(words: RiddleWord[]): RiddleWord[][] {
   const lines: RiddleWord[][] = [];
   let current: RiddleWord[] = [];
 
-  words.forEach((w, idx) => {
-    const oneBased = idx + 1;
-    current.push(w);
+  const pushLine = () => {
+    if (current.length === 0) return;
+    lines.push(current);
+    current = [];
+  };
 
-    const shouldBreak = BREAK_AFTER_INDICES.includes(oneBased) && oneBased < words.length;
+  words.forEach((w) => {
+    const hasNewline = w.value.includes('\n');
 
-    if (shouldBreak) {
-      lines.push(current);
-      current = [];
+    const cleanedValue = w.value.replace(/\n+/g, '');
+
+    current.push({ ...w, value: cleanedValue });
+
+    if (hasNewline) {
+      pushLine();
     }
   });
 
-  if (current.length > 0) {
-    lines.push(current);
+  pushLine();
+
+  if (lines.length > MAX_LINES) {
+    const head = lines.slice(0, MAX_LINES - 1);
+    const tailMerged = lines.slice(MAX_LINES - 1).flat();
+    return [...head, tailMerged];
   }
 
   return lines;
@@ -57,6 +67,13 @@ export const SpellcheckGame: React.FC<Props> = ({ riddle, selectedWordIds, onTog
             >
               {line.map((w, index) => {
                 const selected = selectedWordIds.includes(w.id);
+
+                const displayValue = w.value.replace(/\n+/g, '');
+
+                if (!displayValue) {
+                  return index < line.length - 1 ? ' ' : null;
+                }
+
                 return (
                   <React.Fragment key={w.id}>
                     <span
@@ -73,10 +90,14 @@ export const SpellcheckGame: React.FC<Props> = ({ riddle, selectedWordIds, onTog
                         border: selected ? '1px solid #22c55e' : '1px solid transparent',
                       }}
                       onClick={() => onToggleWord(w.id)}
-                      onMouseOver={e => { if (!selected) e.currentTarget.style.background = '#bbf7d0'; }}
-                      onMouseOut={e => { if (!selected) e.currentTarget.style.background = 'transparent'; }}
+                      onMouseOver={(e) => {
+                        if (!selected) e.currentTarget.style.background = '#bbf7d0';
+                      }}
+                      onMouseOut={(e) => {
+                        if (!selected) e.currentTarget.style.background = 'transparent';
+                      }}
                     >
-                      {w.value}
+                      {displayValue}
                     </span>
                     {index < line.length - 1 && ' '}
                   </React.Fragment>
