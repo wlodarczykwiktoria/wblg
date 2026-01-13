@@ -1,38 +1,41 @@
-// src/components/CrossoutView.tsx
-
 import React from 'react';
 import { Box, Button, CloseButton, Flex, Heading, Spinner, Stack, Text } from '@chakra-ui/react';
-import type { GameResults } from '../gameTypes.ts';
-import type { ApiClient } from '../api/ApiClient.ts';
-import { type Language, translations } from '../i18n.ts';
-import type { CrossoutRiddle } from '../api/modelV2.ts';
-import { CrossoutGame } from './puzzles/CrossoutGame.tsx';
+import type { ApiClient } from '../api/ApiClient';
+import type { CrossoutAnswerRequest, CrossoutRiddle, ResultsCreateRequest } from '../api/modelV2';
+import type { Language } from '../i18n';
+import { translations } from '../i18n';
+import type { GameResults } from '../gameTypes';
+import { mapSubmitToGameResults } from '../shared/utils/mappers.utils';
+import { CrossoutGame } from './puzzles/CrossoutGame';
 
 type Props = {
   apiClient: ApiClient;
   extractId: number;
-  type: string; // "crossout"
+  type: string;
   language: Language;
+
+  bookId?: number;
+  chapter?: number;
+
   onBackToHome(): void;
   onFinishLevel(results: GameResults): void;
 };
-
-type FeedbackKey = 'needSelection' | null;
 
 type State = {
   loading: boolean;
   riddles: CrossoutRiddle[];
   currentIndex: number;
-  // indeks zadania -> id wybranej linii (albo null)
-  selectedLineIds: Record<number, string | null>;
+
+  selectedLineIdsPerPuzzle: string[][];
+
   totalSeconds: number;
+
   isPaused: boolean;
   showPauseModal: boolean;
   showFinishConfirm: boolean;
-  feedbackKey: FeedbackKey;
-};
 
-const CORRECT_LINE_ID_FOR_MOCK = '5'; // TODO: backend będzie zwracał poprawne id
+  crossoutGameId: number | null;
+};
 
 export class CrossoutView extends React.Component<Props, State> {
   private timerId: number | null = null;
@@ -41,29 +44,29 @@ export class CrossoutView extends React.Component<Props, State> {
     super(props);
 
     this.state = {
-      loading: true,
+      loading: false,
       riddles: [],
       currentIndex: 0,
-      selectedLineIds: {},
+      selectedLineIdsPerPuzzle: [],
       totalSeconds: 0,
       isPaused: false,
       showPauseModal: false,
       showFinishConfirm: false,
-      feedbackKey: null,
+      crossoutGameId: null,
     };
 
-    this.loadData = this.loadData.bind(this);
-    this.handleSelectLine = this.handleSelectLine.bind(this);
-    this.handleNext = this.handleNext.bind(this);
-    this.handlePrev = this.handlePrev.bind(this);
+    this.startGame = this.startGame.bind(this);
+    this.goPrev = this.goPrev.bind(this);
+    this.goNext = this.goNext.bind(this);
+    this.handleToggleLine = this.handleToggleLine.bind(this);
+    this.finishInternal = this.finishInternal.bind(this);
+    this.handleFinishClick = this.handleFinishClick.bind(this);
     this.handlePause = this.handlePause.bind(this);
     this.handleResume = this.handleResume.bind(this);
-    this.handleFinishClick = this.handleFinishClick.bind(this);
-    this.finishInternal = this.finishInternal.bind(this);
   }
 
   componentDidMount(): void {
-    void this.loadData();
+    void this.startGame();
 
     this.timerId = window.setInterval(() => {
       this.setState((prev) => {
@@ -74,182 +77,139 @@ export class CrossoutView extends React.Component<Props, State> {
   }
 
   componentWillUnmount(): void {
-    if (this.timerId !== null) {
-      window.clearInterval(this.timerId);
-    }
+    if (this.timerId !== null) window.clearInterval(this.timerId);
   }
 
-  async loadData(): Promise<void> {
-    this.setState({ loading: true });
-    const riddles = await this.props.apiClient.getCrossoutRiddles(this.props.extractId);
+  async startGame(): Promise<void> {
     this.setState({
-      riddles,
-      loading: false,
-      currentIndex: 0,
-      selectedLineIds: {},
-      feedbackKey: null,
-    });
-  }
-
-  private formatTime(secondsTotal: number): string {
-    const minutes = Math.floor(secondsTotal / 60);
-    const seconds = secondsTotal % 60;
-    const mm = minutes.toString();
-    const ss = seconds.toString().padStart(2, '0');
-    return `${mm}:${ss}`;
-  }
-
-  private allAnswered(): boolean {
-    const { riddles, selectedLineIds } = this.state;
-    if (riddles.length === 0) return false;
-    return riddles.every((_, index) => !!selectedLineIds[index]);
-  }
-
-  handleSelectLine(lineId: string): void {
-    // Maksymalnie jedna linia zaznaczona per zadanie:
-    // klik w tę samą -> odznacz, klik w inną -> przenosimy zaznaczenie
-    this.setState((prev) => {
-      const idx = prev.currentIndex;
-      const current = prev.selectedLineIds[idx] ?? null;
-      const next = current === lineId ? null : lineId;
-
-      return {
-        ...prev,
-        selectedLineIds: {
-          ...prev.selectedLineIds,
-          [idx]: next,
-        },
-        feedbackKey: null,
-      };
-    });
-  }
-
-  handleNext(): void {
-    this.setState((prev) => {
-      const { currentIndex, riddles, selectedLineIds } = prev;
-      if (currentIndex >= riddles.length - 1) return prev;
-
-      const selected = selectedLineIds[currentIndex];
-      if (!selected) {
-        return { ...prev, feedbackKey: 'needSelection' };
-      }
-
-      return {
-        ...prev,
-        currentIndex: currentIndex + 1,
-        feedbackKey: null,
-      };
-    });
-  }
-
-  handlePrev(): void {
-    this.setState((prev) => {
-      if (prev.currentIndex === 0) return prev;
-      return {
-        ...prev,
-        currentIndex: prev.currentIndex - 1,
-        feedbackKey: null,
-      };
-    });
-  }
-
-  handlePause(): void {
-    this.setState({
-      isPaused: true,
-      showPauseModal: true,
-    });
-  }
-
-  handleResume(): void {
-    this.setState({
+      loading: true,
       isPaused: false,
       showPauseModal: false,
+      showFinishConfirm: false,
+      currentIndex: 0,
+      totalSeconds: 0,
+    });
+
+    const bookId = this.props.bookId ?? 0;
+    const chapter = this.props.chapter ?? 0;
+
+    const res = await this.props.apiClient.startCrossoutGame(bookId, chapter);
+
+    const gameId = res[0]?.gameId ?? null;
+    const riddles = res.map((x) => x.riddle);
+
+    this.setState({
+      loading: false,
+      riddles,
+      crossoutGameId: gameId,
+      selectedLineIdsPerPuzzle: riddles.map(() => []),
     });
   }
 
-  handleFinishClick(): void {
-    if (!this.allAnswered()) {
-      this.setState({ showFinishConfirm: true });
-      return;
-    }
-    this.finishInternal();
+  handleToggleLine(lineId: string): void {
+    const idx = this.state.currentIndex;
+
+    this.setState((prev) => {
+      const next = [...prev.selectedLineIdsPerPuzzle];
+      const set = new Set(next[idx] ?? []);
+
+      if (set.has(lineId)) set.delete(lineId);
+      else set.add(lineId);
+
+      next[idx] = Array.from(set);
+      return { ...prev, selectedLineIdsPerPuzzle: next };
+    });
   }
 
-  finishInternal(): void {
-    const { riddles, selectedLineIds, totalSeconds } = this.state;
+  goPrev(): void {
+    this.setState((prev) => ({ ...prev, currentIndex: Math.max(0, prev.currentIndex - 1) }));
+  }
 
-    if (riddles.length === 0) {
-      const empty: GameResults = {
-        score: 0,
-        accuracy: 0,
-        totalMistakes: 0,
-        totalPuzzles: 0,
-        completedPuzzles: 0,
-        timeSeconds: 0,
-      };
-      this.props.onFinishLevel(empty);
+  goNext(): void {
+    this.setState((prev) => ({ ...prev, currentIndex: Math.min(prev.riddles.length - 1, prev.currentIndex + 1) }));
+  }
+
+  async finishInternal(): Promise<void> {
+    const { riddles, selectedLineIdsPerPuzzle, totalSeconds, crossoutGameId } = this.state;
+    if (riddles.length === 0) return;
+
+    if (!crossoutGameId) {
+      console.error('Brak crossoutGameId — nie mogę wysłać submit.');
       return;
     }
 
-    const totalPuzzles = riddles.length;
+    const crossedOutLineIds = selectedLineIdsPerPuzzle.flatMap((arr) => arr);
 
-    let correct = 0;
-    let mistakes = 0;
-    let completedPuzzles = 0;
-
-    riddles.forEach((_riddle, index) => {
-      const selected = selectedLineIds[index] ?? null;
-      if (selected) {
-        completedPuzzles += 1;
-      }
-
-      if (!selected) {
-        mistakes += 1; // nic nie skreślone -> traktujemy jak błąd
-      } else if (selected === CORRECT_LINE_ID_FOR_MOCK) {
-        correct += 1;
-      } else {
-        mistakes += 1;
-      }
-    });
-
-    const accuracy = totalPuzzles === 0 ? 0 : correct / totalPuzzles;
-    const score = Math.round(accuracy * 100);
-
-    const results: GameResults = {
-      score,
-      accuracy,
-      totalMistakes: mistakes,
-      totalPuzzles,
-      completedPuzzles,
-      timeSeconds: totalSeconds,
+    const payload: CrossoutAnswerRequest = {
+      type: 'crossout',
+      gameId: crossoutGameId,
+      crossedOutLineIds,
+      elapsedTimeMs: totalSeconds * 1000,
     };
 
+    const response = await this.props.apiClient.submitCrossoutAnswers(payload);
+
+    const bookId = this.props.bookId ?? 0;
+    const chapter = this.props.chapter ?? 0;
+
+    const resultsBody: ResultsCreateRequest = {
+      book_id: bookId,
+      extract_no: chapter,
+      puzzle_type: this.props.type,
+      score: response?.score ?? 0,
+      duration_sec: Math.round(totalSeconds),
+      played_at: new Date().toISOString(),
+      accuracy: response?.accuracy ?? 0,
+      pagesCompleted: response?.pagesCompleted ?? 0,
+      mistakes: response?.mistakes ?? 0,
+    };
+
+    const sessionId = localStorage.getItem('session_id');
+    if (sessionId) {
+      try {
+        await this.props.apiClient.createResults(resultsBody, sessionId);
+      } catch (e) {
+        console.error('Failed to POST /results:', e);
+      }
+    }
+
+    const results = mapSubmitToGameResults(response, riddles.length);
     this.props.onFinishLevel(results);
   }
 
-  render(): React.ReactNode {
+  handleFinishClick(): void {
+    void this.finishInternal();
+  }
+
+  handlePause(): void {
+    this.setState({ isPaused: true, showPauseModal: true });
+  }
+
+  handleResume(): void {
+    this.setState({ isPaused: false, showPauseModal: false });
+  }
+
+  render() {
     const {
       loading,
       riddles,
       currentIndex,
-      selectedLineIds,
       totalSeconds,
+      selectedLineIdsPerPuzzle,
       showPauseModal,
       showFinishConfirm,
-      feedbackKey,
     } = this.state;
-    const { language, onBackToHome } = this.props;
 
-    const t = translations[language];
+    const t = translations[this.props.language];
 
-    if (loading && riddles.length === 0) {
+    if (loading || riddles.length === 0) {
       return (
         <Box>
           <Button
             size="sm"
             mb={4}
             variant="ghost"
-            onClick={onBackToHome}
+            onClick={this.props.onBackToHome}
           >
             ← {t.back}
           </Button>
@@ -258,28 +218,12 @@ export class CrossoutView extends React.Component<Props, State> {
       );
     }
 
-    if (!loading && riddles.length === 0) {
-      return (
-        <Box>
-          <Button
-            size="sm"
-            mb={4}
-            variant="ghost"
-            onClick={onBackToHome}
-          >
-            ← {t.back}
-          </Button>
-          <Text mt={4}>{t.crossoutNoDataLabel}</Text>
-        </Box>
-      );
-    }
-
     const riddle = riddles[currentIndex];
-    const total = riddles.length;
-    const timeLabel = this.formatTime(totalSeconds);
-    const selectedId = selectedLineIds[currentIndex] ?? null;
+    const selectedLineIds = selectedLineIdsPerPuzzle[currentIndex] ?? [];
 
-    const feedbackText = feedbackKey === 'needSelection' ? t.crossoutNeedSelectionLabel : null;
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const timeLabel = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
     return (
       <Box
@@ -306,7 +250,7 @@ export class CrossoutView extends React.Component<Props, State> {
             align="center"
           >
             <Heading size="sm">
-              {t.puzzleOfLabel} {currentIndex + 1}/{total}
+              {t.puzzleOfLabel} {currentIndex + 1}/{riddles.length}
             </Heading>
             <Text fontSize="sm">
               {t.timeLeftLabel}: <strong>{timeLabel}</strong>
@@ -317,31 +261,14 @@ export class CrossoutView extends React.Component<Props, State> {
             size="md"
             mt={2}
           >
-            {t.crossoutHeading}
+            {t.puzzleHeading}
           </Heading>
-          <Text
-            fontSize="sm"
-            color="gray.600"
-          >
-            {t.crossoutInstructions}
-          </Text>
 
           <CrossoutGame
             riddle={riddle}
-            selectedLineId={selectedId}
-            onSelect={this.handleSelectLine}
+            selectedLineIds={selectedLineIds}
+            onToggle={this.handleToggleLine}
           />
-
-          {feedbackText && (
-            <Box
-              borderWidth="1px"
-              borderRadius="md"
-              p={3}
-              bg="red.50"
-            >
-              <Text>{feedbackText}</Text>
-            </Box>
-          )}
 
           <Flex
             justify="space-between"
@@ -350,7 +277,7 @@ export class CrossoutView extends React.Component<Props, State> {
             <Button
               size="sm"
               variant="outline"
-              onClick={this.handlePrev}
+              onClick={this.goPrev}
               disabled={currentIndex === 0}
             >
               ← {t.prevPuzzleLabel}
@@ -358,8 +285,8 @@ export class CrossoutView extends React.Component<Props, State> {
             <Button
               size="sm"
               variant="outline"
-              onClick={this.handleNext}
-              disabled={currentIndex === total - 1}
+              onClick={this.goNext}
+              disabled={currentIndex === riddles.length - 1}
             >
               {t.nextPuzzleLabel} →
             </Button>
@@ -380,7 +307,7 @@ export class CrossoutView extends React.Component<Props, State> {
             inset={0}
             bg="blackAlpha.500"
             backdropFilter="blur(4px)"
-            zIndex={1500}
+            zIndex={1400}
           >
             <Flex
               h="100%"
@@ -399,7 +326,7 @@ export class CrossoutView extends React.Component<Props, State> {
                   position="absolute"
                   right={3}
                   top={3}
-                  onClick={this.handleResume}
+                  onClick={() => this.handleResume()}
                 />
                 <Heading
                   size="md"
@@ -407,10 +334,14 @@ export class CrossoutView extends React.Component<Props, State> {
                 >
                   {t.pauseLabel}
                 </Heading>
-                <Text mb={6}>{t.crossoutPauseMessage}</Text>
+                <Text mb={6}>
+                  {this.props.language === 'pl'
+                    ? 'Gra jest wstrzymana. Możesz w każdej chwili wznowić.'
+                    : 'The game is paused. You can resume at any time.'}
+                </Text>
                 <Button
                   backgroundColor="#1e3932"
-                  onClick={this.handleResume}
+                  onClick={() => this.handleResume()}
                 >
                   {t.resumeLabel}
                 </Button>
@@ -425,7 +356,7 @@ export class CrossoutView extends React.Component<Props, State> {
             inset={0}
             bg="blackAlpha.500"
             backdropFilter="blur(4px)"
-            zIndex={1500}
+            zIndex={1400}
           >
             <Flex
               h="100%"
@@ -453,25 +384,6 @@ export class CrossoutView extends React.Component<Props, State> {
                   {t.finishEarlyTitle}
                 </Heading>
                 <Text mb={6}>{t.finishEarlyMessage}</Text>
-                <Flex
-                  justify="flex-end"
-                  gap={3}
-                >
-                  <Button
-                    variant="outline"
-                    onClick={() => this.setState({ showFinishConfirm: false })}
-                  >
-                    {t.finishEarlyCancel}
-                  </Button>
-                  <Button
-                    backgroundColor="#1e3932"
-                    onClick={() => {
-                      this.setState({ showFinishConfirm: false }, () => this.finishInternal());
-                    }}
-                  >
-                    {t.finishEarlyConfirm}
-                  </Button>
-                </Flex>
               </Box>
             </Flex>
           </Box>

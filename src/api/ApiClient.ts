@@ -14,7 +14,23 @@ import type {
 } from './types';
 import { GameCode } from './types';
 
-import type { AnagramRiddle, ChoiceRiddle, CrossoutRiddle, SpellcheckRiddle, SwitchRiddle } from './modelV2';
+import type {
+  AnagramRiddle,
+  ChoiceRiddle,
+  CrossoutRiddle,
+  SpellcheckRiddle,
+  SwitchRiddle,
+  FillGapsAnswerRequest,
+  AnagramAnswerRequest,
+  ChoiceAnswerRequest,
+  SpellcheckAnswerRequest,
+  CrossoutAnswerRequest,
+  SwitchAnswerRequest,
+  ResultsCreateRequest,
+  ResultsSummaryResponse,
+  GameAnswerResponse
+} from './modelV2';
+
 import {
   anagramMockResponse,
   choiceMockResponse,
@@ -23,7 +39,10 @@ import {
   switchMockResponse,
 } from './mockExamples';
 
-// ---- MOCK DANYCH ----
+export interface Test {
+  riddle: Riddle;
+  gameId: number;
+}
 
 const MOCK_BOOKS: Book[] = [
   {
@@ -35,15 +54,7 @@ const MOCK_BOOKS: Book[] = [
     chapters: 17,
     completedChapters: 0,
   },
-  {
-    id: 2,
-    title: 'Lalka',
-    author: 'Bolesław Prus',
-    year: 1890,
-    genre: 'Novel',
-    chapters: 20,
-    completedChapters: 3,
-  },
+  { id: 2, title: 'Lalka', author: 'Bolesław Prus', year: 1890, genre: 'Novel', chapters: 20, completedChapters: 3 },
   {
     id: 3,
     title: 'Ferdydurke',
@@ -130,7 +141,6 @@ const GAMES: Game[] = [
     description_en: 'Select words that contain spelling mistakes in the text.',
     description_pl: 'Zaznacz słowa, które zawierają błędy w tekście.',
   },
-
   {
     id: 3,
     code: GameCode.Crossout,
@@ -149,7 +159,6 @@ const GAMES: Game[] = [
     description_en: 'Select words that are anagrams of correct words in the poem.',
     description_pl: 'Zaznacz słowa, które są anagramami poprawnych wyrazów w wierszu.',
   },
-
   {
     id: 5,
     code: GameCode.Switch,
@@ -170,6 +179,12 @@ const GAMES: Game[] = [
   },
 ];
 
+const SPELLCHECK_RIDDLES: SpellcheckRiddle[] = Array.from({ length: 5 }).map(() => spellcheckMockResponse.riddle);
+const CROSSOUT_RIDDLES: CrossoutRiddle[] = Array.from({ length: 5 }).map(() => crossoutMockResponse.riddle);
+const ANAGRAM_RIDDLES: AnagramRiddle[] = Array.from({ length: 5 }).map(() => anagramMockResponse.riddle);
+const SWITCH_RIDDLES: SwitchRiddle[] = Array.from({ length: 5 }).map(() => switchMockResponse.riddle);
+const CHOICE_RIDDLES: ChoiceRiddle[] = Array.from({ length: 5 }).map(() => choiceMockResponse.riddle);
+
 const BASE_PARTS: RiddlePart[] = [
   { type: 'text', value: 'Litwo! Ojczyzno moja! ty jesteś jak ' },
   { type: 'gap', id: 'g1' },
@@ -181,10 +196,7 @@ const BASE_PARTS: RiddlePart[] = [
   { type: 'gap', id: 'g4' },
   { type: 'text', value: '\nW ' },
   { type: 'gap', id: 'g5' },
-  {
-    type: 'text',
-    value: ' nazwach widzę i opisuję,\nBo tęskno mi za tobą i ',
-  },
+  { type: 'text', value: ' nazwach widzę i opisuję,\nBo tęskno mi za tobą i ' },
   { type: 'gap', id: 'g6' },
   { type: 'text', value: '.' },
 ];
@@ -198,7 +210,9 @@ const VARIANT_PREFIXES: string[] = [
 ];
 
 function makeVariantParts(prefix: string): RiddlePart[] {
-  return BASE_PARTS.map((p, idx) => (idx === 0 && p.type === 'text' ? { ...p, value: prefix } : p));
+  const parts = [...BASE_PARTS];
+  parts[0] = { type: 'text', value: prefix };
+  return parts;
 }
 
 const MOCK_OPTIONS: RiddleOption[] = [
@@ -206,58 +220,50 @@ const MOCK_OPTIONS: RiddleOption[] = [
   { id: 'w2', label: 'cenić' },
   { id: 'w3', label: 'stracił' },
   { id: 'w4', label: 'ozdobie' },
-  { id: 'w5', label: 'polskich' },
+  { id: 'w5', label: 'porządku' },
   { id: 'w6', label: 'płaczę' },
-  { id: 'w7', label: 'miłość' },
-  { id: 'w8', label: 'szczęście' },
 ];
 
-const SPELLCHECK_RIDDLES: SpellcheckRiddle[] = Array.from({ length: 5 }).map(() => spellcheckMockResponse.riddle);
+type StartGameRequest = {
+  bookId: number;
+  gameType: string;
+  chapter: number;
+};
 
-const CROSSOUT_RIDDLES: CrossoutRiddle[] = Array.from({ length: 5 }).map(() => crossoutMockResponse.riddle);
-
-const ANAGRAM_RIDDLES: AnagramRiddle[] = Array.from({ length: 5 }).map(() => anagramMockResponse.riddle);
-
-const SWITCH_RIDDLES: SwitchRiddle[] = Array.from({ length: 5 }).map(() => switchMockResponse.riddle);
-
-const CHOICE_RIDDLES: ChoiceRiddle[] = Array.from({ length: 5 }).map(() => choiceMockResponse.riddle);
+type StartAnagramResponse = { gameId: number; riddle: AnagramRiddle };
+type StartChoiceResponse = { gameId: number; riddle: ChoiceRiddle };
+type StartSpellcheckResponse = { gameId: number; riddle: SpellcheckRiddle };
+type StartCrossoutResponse = { gameId: number; riddle: CrossoutRiddle };
+type StartSwitchResponse = { gameId: number; riddle: SwitchRiddle };
 
 export class ApiClient {
-  constructor(private readonly baseUrl: string = 'https://wblg-backend-1007953962746.europe-west1.run.app') {
-  }
+  constructor(private readonly baseUrl: string) {}
+
+  private readonly gameServiceBaseUrl =
+    'https://polish-literature-based-language-game-574160223694.europe-west1.run.app';
 
   async getGames(): Promise<Game[]> {
     return Promise.resolve(GAMES);
   }
 
   async getBooks(): Promise<Book[]> {
-    console.log(this.baseUrl);
     if (this.baseUrl) {
       try {
         const res = await fetch(`${this.baseUrl}/books`, {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
         });
-        if (!res.ok) {
-          // fallback to mock if backend fails
-          return MOCK_BOOKS;
-        }
-        const data = (await res.json()) as Book[];
-        return data;
-      } catch (err) {
-        // fallback to mock if fetch errors
+        if (!res.ok) return MOCK_BOOKS;
+        return (await res.json()) as Book[];
+      } catch {
         return MOCK_BOOKS;
       }
     }
-    // fallback to mock if no baseUrl
     return Promise.resolve(MOCK_BOOKS);
   }
 
   async getExtracts(bookId: number): Promise<Extract[]> {
-    const extracts = MOCK_EXTRACTS_BY_BOOK[bookId] ?? [];
-    return Promise.resolve(extracts);
+    return Promise.resolve(MOCK_EXTRACTS_BY_BOOK[bookId] ?? []);
   }
 
   async createLevel(_extractId: number, type: string): Promise<Level> {
@@ -274,6 +280,244 @@ export class ApiClient {
     return Promise.resolve(riddles);
   }
 
+  // =========================
+  // ===== REAL START/SUBMIT ==
+  // =========================
+
+  async startFillGapsGame(bookId: number, chapter: number): Promise<Test[]> {
+    const body: StartGameRequest = { bookId, gameType: 'fill-gaps', chapter };
+
+    const res = await fetch(`${this.gameServiceBaseUrl}/games/fill-gaps/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`FillGaps start failed: ${res.status} ${text}`);
+    }
+
+    return (await res.json()) as Test[];
+  }
+
+  async submitFillGapsAnswers(body: FillGapsAnswerRequest): Promise<GameAnswerResponse> {
+    const res = await fetch(`${this.gameServiceBaseUrl}/games/fill-gaps/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`FillGaps submit failed: ${res.status} ${text}`);
+    }
+
+    return await res.json();
+  }
+
+  async startAnagramGame(bookId: number, chapter: number): Promise<StartAnagramResponse[]> {
+    const body: StartGameRequest = { bookId, gameType: 'anagram', chapter };
+
+    const res = await fetch(`${this.gameServiceBaseUrl}/games/anagram/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Anagram start failed: ${res.status} ${text}`);
+    }
+
+    return (await res.json()) as StartAnagramResponse[];
+  }
+
+  async submitAnagramAnswers(body: AnagramAnswerRequest): Promise<GameAnswerResponse> {
+    const res = await fetch(`${this.gameServiceBaseUrl}/games/anagram/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Anagram submit failed: ${res.status} ${text}`);
+    }
+
+    return await res.json();
+  }
+
+  async startChoiceGame(bookId: number, chapter: number): Promise<StartChoiceResponse[]> {
+    const body: StartGameRequest = { bookId, gameType: 'choice', chapter };
+
+    const res = await fetch(`${this.gameServiceBaseUrl}/games/choice/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Choice start failed: ${res.status} ${text}`);
+    }
+
+    return (await res.json()) as StartChoiceResponse[];
+  }
+
+  async submitChoiceAnswers(body: ChoiceAnswerRequest): Promise<GameAnswerResponse> {
+    const res = await fetch(`${this.gameServiceBaseUrl}/games/choice/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Choice submit failed: ${res.status} ${text}`);
+    }
+
+    return await res.json();
+  }
+
+  async startSpellcheckGame(bookId: number, chapter: number): Promise<StartSpellcheckResponse[]> {
+    const body: StartGameRequest = { bookId, gameType: 'spellcheck', chapter };
+
+    const res = await fetch(`${this.gameServiceBaseUrl}/games/spellcheck/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Spellcheck start failed: ${res.status} ${text}`);
+    }
+
+    return (await res.json()) as StartSpellcheckResponse[];
+  }
+
+  async submitSpellcheckAnswers(body: SpellcheckAnswerRequest): Promise<GameAnswerResponse> {
+    const res = await fetch(`${this.gameServiceBaseUrl}/games/spellcheck/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Spellcheck submit failed: ${res.status} ${text}`);
+    }
+
+    return await res.json();
+  }
+
+  async startCrossoutGame(bookId: number, chapter: number): Promise<StartCrossoutResponse[]> {
+    const body: StartGameRequest = { bookId, gameType: 'crossout', chapter };
+
+    const res = await fetch(`${this.gameServiceBaseUrl}/games/crossout/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Crossout start failed: ${res.status} ${text}`);
+    }
+
+    return (await res.json()) as StartCrossoutResponse[];
+  }
+
+  async submitCrossoutAnswers(body: CrossoutAnswerRequest): Promise<GameAnswerResponse> {
+    const res = await fetch(`${this.gameServiceBaseUrl}/games/crossout/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Crossout submit failed: ${res.status} ${text}`);
+    }
+
+    return await res.json();
+  }
+
+  async startSwitchGame(bookId: number, chapter: number): Promise<StartSwitchResponse[]> {
+    const body: StartGameRequest = { bookId, gameType: 'switch', chapter };
+
+    const res = await fetch(`${this.gameServiceBaseUrl}/games/switch/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Switch start failed: ${res.status} ${text}`);
+    }
+
+    return (await res.json()) as StartSwitchResponse[];
+  }
+
+  async submitSwitchAnswers(body: SwitchAnswerRequest): Promise<GameAnswerResponse> {
+    const res = await fetch(`${this.gameServiceBaseUrl}/games/switch/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Switch submit failed: ${res.status} ${text}`);
+    }
+
+    return await res.json();
+  }
+
+  async createResults(body: ResultsCreateRequest, sessionId: string): Promise<unknown> {
+    const res = await fetch(`${this.baseUrl}/results`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Id': sessionId },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Results POST failed: ${res.status} ${text}`);
+    }
+
+    try {
+      return await res.json();
+    } catch {
+      return null;
+    }
+  }
+
+  async getResultsSummary(bookId: number, sessionId: string): Promise<ResultsSummaryResponse> {
+    const res = await fetch(
+      `${this.baseUrl}/results/summary?book_id=${encodeURIComponent(String(bookId))}`,
+      { method: 'GET', headers: { 'Content-Type': 'application/json', 'X-Session-Id': sessionId } },
+    );
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Results summary failed: ${res.status} ${text}`);
+    }
+
+    const raw = await res.json();
+
+    if (raw && typeof raw === 'object' && Array.isArray((raw as any).books)) {
+      const first = (raw as any).books[0];
+      if (!first) throw new Error('Results summary: empty books array');
+      return first as ResultsSummaryResponse;
+    }
+
+    return raw as ResultsSummaryResponse;
+  }
+
+  // ====== STARE MOCKI (zostawione) ======
   async getSpellcheckRiddles(extractId: number): Promise<SpellcheckRiddle[]> {
     console.log('getSpellcheckRiddles mock for extract:', extractId);
     return Promise.resolve(SPELLCHECK_RIDDLES);
@@ -301,38 +545,22 @@ export class ApiClient {
 
   async submitAnswer(levelId: number, riddleId: number, answer: string): Promise<SubmitAnswerResponse> {
     console.log('submitAnswer mock:', { levelId, riddleId, answer });
-
-    return Promise.resolve({
-      correct: true,
-      explanation: 'Mock: odpowiedź przyjęta',
-    });
+    return Promise.resolve({ correct: true, explanation: 'Mock: odpowiedź przyjęta' });
   }
 
   async finishLevel(levelId: number): Promise<FinishLevelResponse> {
     console.log('finishLevel mock:', { levelId });
-    return Promise.resolve({
-      score: 100,
-      duration: 30,
-    });
+    return Promise.resolve({ score: 100, duration: 30 });
   }
 
   async listResults(sessionId: string): Promise<ResultsResponse> {
     console.log('listResults mock:', { sessionId });
-    return Promise.resolve([
-      {
-        extractId: 101,
-        bestScore: 100,
-      },
-    ]);
+    return Promise.resolve([{ extractId: 101, bestScore: 100 }]);
   }
 
   async fetchChapterConfig(bookId: number, chapterIndex: number, gameCode: GameCode): Promise<void> {
     if (!this.baseUrl) {
-      console.log('fetchChapterConfig mock:', {
-        bookId,
-        chapterIndex,
-        gameCode,
-      });
+      console.log('fetchChapterConfig mock:', { bookId, chapterIndex, gameCode });
       return Promise.resolve();
     }
 

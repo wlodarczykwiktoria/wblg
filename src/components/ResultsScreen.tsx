@@ -1,5 +1,3 @@
-// src/components/ResultsScreen.tsx
-
 import React from 'react';
 import { Box, Button, Flex, Heading, SimpleGrid, Text } from '@chakra-ui/react';
 import type { GameResults } from '../gameTypes';
@@ -8,37 +6,42 @@ import { translations } from '../i18n';
 
 type Props = {
   language: Language;
+  results?: GameResults;
   onPlayAgain(): void;
   onNextExtract(): void;
   onBackToLibrary(): void;
 };
 
 function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
+  const safe = Number.isFinite(seconds) ? seconds : 0;
+  const m = Math.floor(safe / 60);
+  const s = safe % 60;
   const mm = m.toString();
   const ss = s.toString().padStart(2, '0');
   return `${mm}:${ss}`;
 }
 
+const EMPTY_RESULTS: GameResults = {
+  score: 0,
+  accuracy: 0,
+  totalMistakes: 0,
+  timeSeconds: 0,
+  completedPuzzles: 0,
+  totalPuzzles: 0,
+};
+
 export class ResultsScreen extends React.Component<Props> {
   render() {
     const { language } = this.props;
-    const t = translations[language];
-    const gameResults: GameResults = {
-      score: 80,
-      accuracy: 0.95,
-      totalMistakes: 2,
-      totalPuzzles: 5,
-      completedPuzzles: 5,
-      timeSeconds: 123,
-    };
+    const results = this.props.results ?? EMPTY_RESULTS;
 
-    const accuracyPercent = Math.round(gameResults.accuracy * 100);
-    const score = gameResults.score;
-    const mistakes = gameResults.totalMistakes;
-    const timeText = formatTime(gameResults.timeSeconds);
-    const pagesCompleted = `${gameResults.completedPuzzles}/${gameResults.totalPuzzles}`;
+    const t = translations[language];
+
+    const accuracyPercent = Math.round(results.accuracy * 100);
+    const score = results.score;
+    const mistakes = results.totalMistakes;
+    const timeText = formatTime(results.timeSeconds);
+    const pagesCompleted = `${results.completedPuzzles}/${results.totalPuzzles}`;
 
     return (
       <Box

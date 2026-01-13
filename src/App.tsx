@@ -5,11 +5,7 @@ import { Box, Button, Container, Flex, Heading, NativeSelect, Spacer } from '@ch
 import { type Language, translations } from './i18n.ts';
 import type { GameResults } from './gameTypes.ts';
 import type { Book, GameType } from './api/modelV2.ts';
-import {
-  type BookProgress,
-  resetProgressForBook,
-  updateProgressForChapter,
-} from './storage/progressStorage.ts';
+import { type BookProgress, resetProgressForBook, updateProgressForChapter } from './storage/progressStorage.ts';
 import { ApiClient } from './api/ApiClient.ts';
 import { HomeView } from './components/HomeView.tsx';
 import { GameSelectionView } from './components/GameSelectionView.tsx';
@@ -18,7 +14,7 @@ import { ProgressView } from './components/ProgressView.tsx';
 import { SpellcheckView } from './components/SpellcheckView.tsx';
 import { PuzzleView } from './components/PuzzleView.tsx';
 import { ResultsScreen } from './components/ResultsScreen.tsx';
-import { GameCode } from './api/types.ts';
+import { GameCode, type Riddle } from './api/types.ts';
 import { CrossoutView } from './components/CrossoutView.tsx';
 import { AnagramView } from './components/AnagramView.tsx';
 import { SwitchView } from './components/SwitchView.tsx';
@@ -43,6 +39,11 @@ type AppState = {
   progress: BookProgress[];
   showInterruptGameModal: boolean;
 };
+
+//TODO move to some global service one day
+export function countGaps(riddle: Riddle): number {
+  return riddle.prompt.parts.filter((p) => p.type === 'gap').length;
+}
 
 export class App extends React.Component<unknown, AppState> {
   private readonly apiClient: ApiClient;
@@ -118,10 +119,6 @@ export class App extends React.Component<unknown, AppState> {
 
   async loadBooksAndProgress(): Promise<void> {
     this.setState({ booksLoading: true });
-    // const books = await this.apiClient.getBooks();
-    // const existing = loadProgress();
-    // const progress = existing.length === 0 ? ensureProgressForBooks(books) : existing;
-    // this.setState({  progress, booksLoading: false });
   }
 
   getRandomGameType(): GameType {
@@ -143,7 +140,6 @@ export class App extends React.Component<unknown, AppState> {
 
   handleGameSelected(gameId: number | 'random', type: GameType | 'random', code: GameCode | null): void {
     const chosenId = gameId === 'random' ? 1 : gameId;
-
     const chosenType: GameType = type === 'random' ? this.getRandomGameType() : type;
 
     const chosenCode: GameCode =
@@ -170,11 +166,11 @@ export class App extends React.Component<unknown, AppState> {
   }
 
   async afterSelection(): Promise<void> {
-    const { selectedGameType, selectedBookId, selectedGameCode, currentChapterIndex } = this.state;
+    const { selectedGameType, selectedBookId, selectedGameCode } = this.state;
 
     if (selectedGameType && selectedBookId !== null) {
       if (selectedGameCode) {
-        void this.apiClient.fetchChapterConfig(selectedBookId, currentChapterIndex, selectedGameCode);
+        // void this.apiClient.fetchChapterConfig(selectedBookId, currentChapterIndex, selectedGameCode);
       }
 
       const extracts = await this.apiClient.getExtracts(selectedBookId);
@@ -285,10 +281,11 @@ export class App extends React.Component<unknown, AppState> {
       language,
       books,
       booksLoading,
+      currentChapterIndex,
       progress,
     } = this.state;
 
-    if (route === 'home') {
+      if (route === 'home') {
       return (
         <HomeView
           language={language}
@@ -327,6 +324,7 @@ export class App extends React.Component<unknown, AppState> {
     if (route === 'progress') {
       return (
         <ProgressView
+          apiClient={this.apiClient}
           language={language}
           books={books}
           progress={progress}
@@ -343,6 +341,8 @@ export class App extends React.Component<unknown, AppState> {
             extractId={selectedExtractId}
             type={selectedGameType}
             language={language}
+            bookId={selectedBookId}
+            chapter={currentChapterIndex + 1}
             onBackToHome={this.handleBackToHome}
             onFinishLevel={this.handleFinishLevel}
           />
@@ -356,6 +356,8 @@ export class App extends React.Component<unknown, AppState> {
             extractId={selectedExtractId}
             type={selectedGameType}
             language={language}
+            bookId={selectedBookId}
+            chapter={currentChapterIndex + 1}
             onBackToHome={this.handleBackToHome}
             onFinishLevel={this.handleFinishLevel}
           />
@@ -369,6 +371,8 @@ export class App extends React.Component<unknown, AppState> {
             extractId={selectedExtractId}
             type={selectedGameType}
             language={language}
+            bookId={selectedBookId}
+            chapter={currentChapterIndex + 1}
             onBackToHome={this.handleBackToHome}
             onFinishLevel={this.handleFinishLevel}
           />
@@ -382,6 +386,8 @@ export class App extends React.Component<unknown, AppState> {
             extractId={selectedExtractId}
             type={selectedGameType}
             language={language}
+            bookId={selectedBookId}
+            chapter={currentChapterIndex + 1}
             onBackToHome={this.handleBackToHome}
             onFinishLevel={this.handleFinishLevel}
           />
@@ -395,6 +401,8 @@ export class App extends React.Component<unknown, AppState> {
             extractId={selectedExtractId}
             type={selectedGameType}
             language={language}
+            bookId={selectedBookId}
+            chapter={currentChapterIndex + 1}
             onBackToHome={this.handleBackToHome}
             onFinishLevel={this.handleFinishLevel}
           />
@@ -408,6 +416,8 @@ export class App extends React.Component<unknown, AppState> {
             extractId={selectedExtractId}
             type={selectedGameType}
             language={language}
+            bookId={selectedBookId}
+            chapter={currentChapterIndex + 1}
             onBackToHome={this.handleBackToHome}
             onFinishLevel={this.handleFinishLevel}
           />
@@ -419,6 +429,7 @@ export class App extends React.Component<unknown, AppState> {
       return (
         <ResultsScreen
           language={language}
+          results={this.state.results!}
           onPlayAgain={this.handlePlayAgain}
           onNextExtract={this.handleNextExtract}
           onBackToLibrary={this.handleBackToLibraryFromResults}
@@ -441,7 +452,6 @@ export class App extends React.Component<unknown, AppState> {
 
     return (
       <div>
-        {/* Navbar */}
         <Box
           as="nav"
           position="sticky"
@@ -455,8 +465,16 @@ export class App extends React.Component<unknown, AppState> {
           borderRadius="0 0 24px 24px"
         >
           <Flex align="center">
-            <MdLibraryBooks size={32} fill='#1e3932' />
-            <Heading marginLeft={4} size="md">{t.appTitle}</Heading>
+            <MdLibraryBooks
+              size={32}
+              fill="#1e3932"
+            />
+            <Heading
+              marginLeft={4}
+              size="md"
+            >
+              {t.appTitle}
+            </Heading>
             <Spacer />
             <Button
               size="sm"
@@ -483,6 +501,7 @@ export class App extends React.Component<unknown, AppState> {
             </NativeSelect.Root>
           </Flex>
         </Box>
+
         <Container
           maxW="6xl"
           p={0}
@@ -524,13 +543,7 @@ export class App extends React.Component<unknown, AppState> {
                       ? 'Gra zostanie przerwana, a obecny postęp w tej rundzie zostanie utracony.'
                       : 'The current game will be stopped and your in-progress state for this round will be lost.'}
                   </p>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'flex-end',
-                      gap: '8px',
-                    }}
-                  >
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                     <Button
                       variant="outline"
                       size="sm"

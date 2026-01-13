@@ -1,5 +1,3 @@
-// src/components/puzzles/FillGapsGame.tsx
-
 import React from 'react';
 import { Box, Button, Flex, Text, VStack, Wrap, WrapItem } from '@chakra-ui/react';
 import type { Riddle, RiddleOption } from '../../api/types';
@@ -11,6 +9,7 @@ type Props = {
   riddle: Riddle;
   language: Language;
   initialAnswers: AnswersState;
+  gapOffset?: number;
   onChange(answers: AnswersState): void;
 };
 
@@ -101,6 +100,9 @@ export class FillGapsGame extends React.Component<Props, State> {
     const availableOptions = this.availableOptions;
     const t = translations[this.props.language];
 
+    const gapOffset = this.props.gapOffset ?? 0; // ✅ default
+    let localGapCounter = 0;
+
     return (
       <VStack align="stretch">
         <Box
@@ -116,18 +118,23 @@ export class FillGapsGame extends React.Component<Props, State> {
             if (part.type === 'text') {
               return (
                 <Text
-                  key={index}
+                  key={`text-${index}`}
                   as="span"
                 >
                   {part.value}
                 </Text>
               );
             }
+
+            const globalGapIndex = gapOffset + localGapCounter;
+            const gapId = `gap-${globalGapIndex}`;
+            localGapCounter += 1;
+
             return (
               <Box
                 as="span"
-                key={part.id}
-                onDrop={(e) => this.handleDropOnGap(e, part.id)}
+                key={gapId}
+                onDrop={(e) => this.handleDropOnGap(e, gapId)}
                 onDragOver={this.handleDragOverGap}
                 borderWidth="1px"
                 borderStyle="dashed"
@@ -145,9 +152,8 @@ export class FillGapsGame extends React.Component<Props, State> {
                 fontSize="md"
                 fontWeight="normal"
                 color="green.700"
-                transition="background 0.2s"
               >
-                <Text fontWeight="normal">{this.renderGapContent(part.id)}</Text>
+                <Text fontWeight="normal">{this.renderGapContent(gapId)}</Text>
               </Box>
             );
           })}
@@ -166,6 +172,7 @@ export class FillGapsGame extends React.Component<Props, State> {
           >
             {t.chooseWordsLabel}
           </Text>
+
           <Wrap justify="center">
             {availableOptions.map((opt) => (
               <WrapItem key={opt.id}>

@@ -147,7 +147,7 @@ export const crossoutMockResponse: CrossoutResponse = {
 export const crossoutMockAnswer: CrossoutAnswerRequest = {
   type: 'crossout',
   gameId: 1003,
-  crossedOutLineIds: '4',
+  crossedOutLineIds: ['4'],
   elapsedTimeMs: 45000,
 };
 

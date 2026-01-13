@@ -8,7 +8,7 @@ import type { Language } from '../i18n';
 import { translations } from '../i18n';
 import type { BookProgress } from '../storage/progressStorage';
 import { getGenreLabel } from './genreTranslations.ts';
-import type { GameType, GameRequest } from '../api/modelV2';
+import type { GameRequest, GameType } from '../api/modelV2';
 
 type Props = {
   apiClient: ApiClient;
@@ -144,7 +144,6 @@ export class BookSelectionView extends React.Component<Props, State> {
       }
     }
 
-    // Use selectedGameType from props or state if available, fallback to 'fill-gaps' as default
     const gameType: GameType = (this.props as any).selectedGameType || 'fill-gaps';
     const req: GameRequest = {
       bookId: selectedBookId,
@@ -211,8 +210,7 @@ export class BookSelectionView extends React.Component<Props, State> {
   get filteredAndSortedBooks(): Book[] {
     const { searchQuery, sortColumn, sortDirection, selectedAuthors, selectedGenres, yearRange } = this.state;
 
-    const booksWithProgress = this.getBooksWithProgress();
-    let result = booksWithProgress;
+    let result = this.getBooksWithProgress();
 
     if (searchQuery.trim().length >= 3) {
       const q = searchQuery.trim().toLowerCase();
@@ -232,7 +230,7 @@ export class BookSelectionView extends React.Component<Props, State> {
       result = result.filter((b) => b.year >= minY && b.year <= maxY);
     }
 
-    const sorted = [...result].sort((a, b) => {
+    return [...result].sort((a, b) => {
       let cmp = 0;
 
       if (sortColumn === 'title') {
@@ -245,8 +243,6 @@ export class BookSelectionView extends React.Component<Props, State> {
 
       return sortDirection === 'asc' ? cmp : -cmp;
     });
-
-    return sorted;
   }
 
   get filteredAndSortedBooksTotal(): number {
@@ -339,7 +335,6 @@ export class BookSelectionView extends React.Component<Props, State> {
     const completedCount = bookProgress?.chapters.filter((c) => c.completed).length ?? 0;
     const safeIndex = chapterModalSelectedIndex > completedCount ? completedCount : chapterModalSelectedIndex;
 
-    // Use selectedGameType from props or state if available, fallback to 'fill-gaps' as default
     const gameType: GameType = (this.props as any).selectedGameType || 'fill-gaps';
     const req: GameRequest = {
       bookId: selectedBookId,
@@ -414,9 +409,8 @@ export class BookSelectionView extends React.Component<Props, State> {
         <Button
           size="sm"
           mb={4}
-          variant="outline"
+          variant="ghost"
           onClick={this.props.onBack}
-          borderRadius="full"
         >
           ← {t.back}
         </Button>

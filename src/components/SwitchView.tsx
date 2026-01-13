@@ -1,12 +1,11 @@
-// src/components/SwitchView.tsx
-
 import React from 'react';
 import { Box, Button, CloseButton, Flex, Heading, Spinner, Stack, Text } from '@chakra-ui/react';
 import type { ApiClient } from '../api/ApiClient.ts';
 import type { Language } from '../i18n.ts';
 import { translations } from '../i18n.ts';
-import type { SwitchRiddle, SelectedSwitchPair } from '../api/modelV2.ts';
+import type { SwitchRiddle, SelectedSwitchPair, SwitchAnswerRequest, ResultsCreateRequest } from '../api/modelV2.ts';
 import type { GameResults } from '../gameTypes.ts';
+import { mapSubmitToGameResults } from '../shared/utils/mappers.utils.ts';
 import { SwitchGame } from './puzzles/SwitchGame.tsx';
 
 type Props = {
@@ -14,6 +13,10 @@ type Props = {
   extractId: number;
   type: string;
   language: Language;
+
+  bookId?: number;
+  chapter?: number;
+
   onBackToHome(): void;
   onFinishLevel(results: GameResults): void;
 };
@@ -24,28 +27,19 @@ type State = {
   loading: boolean;
   riddles: SwitchRiddle[];
   currentIndex: number;
-  selectedPairs: Record<number, SelectedSwitchPair[]>;
-  openWordId: string | null;
-  openWordIndex: number | null;
+
+  selectedPairsPerPuzzle: SelectedSwitchPair[][];
+
   totalSeconds: number;
   isPaused: boolean;
   showPauseModal: boolean;
   showFinishConfirm: boolean;
   feedbackKey: FeedbackKey;
+
+  switchGameId: number | null;
 };
 
 const MAX_PAIRS_PER_PUZZLE = 3;
-
-const CORRECT_SWITCH_PAIRS: [string, string][] = [
-  ['w2', 'w3'],
-  ['w20', 'w21'],
-];
-
-function normalizePairId(a: string, b: string): string {
-  return a < b ? `${a}|${b}` : `${b}|${a}`;
-}
-
-const CORRECT_SWITCH_SET = new Set(CORRECT_SWITCH_PAIRS.map(([a, b]) => normalizePairId(a, b)));
 
 export class SwitchView extends React.Component<Props, State> {
   private timerId: number | null = null;
@@ -57,17 +51,16 @@ export class SwitchView extends React.Component<Props, State> {
       loading: true,
       riddles: [],
       currentIndex: 0,
-      selectedPairs: {},
-      openWordId: null,
-      openWordIndex: null,
+      selectedPairsPerPuzzle: [],
       totalSeconds: 0,
       isPaused: false,
       showPauseModal: false,
       showFinishConfirm: false,
       feedbackKey: null,
+      switchGameId: null,
     };
 
-    this.loadData = this.loadData.bind(this);
+    this.startGame = this.startGame.bind(this);
     this.handleWordClick = this.handleWordClick.bind(this);
     this.handleNext = this.handleNext.bind(this);
     this.handlePrev = this.handlePrev.bind(this);
@@ -79,7 +72,7 @@ export class SwitchView extends React.Component<Props, State> {
   }
 
   componentDidMount(): void {
-    void this.loadData();
+    void this.startGame();
 
     this.timerId = window.setInterval(() => {
       this.setState((prev) => {
@@ -90,21 +83,36 @@ export class SwitchView extends React.Component<Props, State> {
   }
 
   componentWillUnmount(): void {
-    if (this.timerId !== null) {
-      window.clearInterval(this.timerId);
-    }
+    if (this.timerId !== null) window.clearInterval(this.timerId);
   }
 
-  async loadData(): Promise<void> {
-    this.setState({ loading: true });
-    const riddles = await this.props.apiClient.getSwitchRiddles(this.props.extractId);
+  async startGame(): Promise<void> {
     this.setState({
-      riddles,
-      loading: false,
+      loading: true,
       currentIndex: 0,
-      selectedPairs: {},
-      openWordId: null,
-      openWordIndex: null,
+      selectedPairsPerPuzzle: [],
+      totalSeconds: 0,
+      isPaused: false,
+      showPauseModal: false,
+      showFinishConfirm: false,
+      feedbackKey: null,
+      switchGameId: null,
+    });
+
+    const bookId = this.props.bookId ?? 0;
+    const chapter = this.props.chapter ?? 0;
+
+    const res = await this.props.apiClient.startSwitchGame(bookId, chapter);
+
+    const gameId = res[0]?.gameId ?? null;
+    const riddles = res.map((x) => x.riddle);
+
+    this.setState({
+      loading: false,
+      riddles,
+      switchGameId: gameId,
+      selectedPairsPerPuzzle: riddles.map(() => []),
+      currentIndex: 0,
       feedbackKey: null,
     });
   }
@@ -112,41 +120,32 @@ export class SwitchView extends React.Component<Props, State> {
   private formatTime(secondsTotal: number): string {
     const minutes = Math.floor(secondsTotal / 60);
     const seconds = secondsTotal % 60;
-    const mm = minutes.toString();
-    const ss = seconds.toString().padStart(2, '0');
-    return `${mm}:${ss}`;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
 
   private allAnswered(): boolean {
-    const { riddles, selectedPairs } = this.state;
+    const { riddles, selectedPairsPerPuzzle } = this.state;
     if (riddles.length === 0) return false;
-
-    return riddles.every((_, index) => (selectedPairs[index] ?? []).length > 0);
+    return riddles.every((_, i) => (selectedPairsPerPuzzle[i] ?? []).length > 0);
   }
 
   private getPairsForCurrent(): SelectedSwitchPair[] {
-    const { currentIndex, selectedPairs } = this.state;
-    return selectedPairs[currentIndex] ?? [];
+    const { currentIndex, selectedPairsPerPuzzle } = this.state;
+    return selectedPairsPerPuzzle[currentIndex] ?? [];
   }
 
   handleWordClick(wordId: string, wordIndex: number): void {
     this.setState((prev) => {
-      const { currentIndex, riddles, selectedPairs } = prev;
-
+      const { currentIndex, riddles } = prev;
       const riddle = riddles[currentIndex];
       if (!riddle) return prev;
 
       const words = riddle.prompt.words;
-
-      if (wordIndex >= words.length - 1) {
-        return prev;
-      }
+      if (wordIndex >= words.length - 1) return prev;
 
       const rightWord = words[wordIndex + 1];
+      const pairsForPuzzle = prev.selectedPairsPerPuzzle[currentIndex] ?? [];
 
-      const pairsForPuzzle = selectedPairs[currentIndex] ?? [];
-
-      // sprawdź czy któreś z tych słów już jest w parze
       const alreadyPaired = pairsForPuzzle.some(
         (p) =>
           p.firstWordId === wordId ||
@@ -154,29 +153,19 @@ export class SwitchView extends React.Component<Props, State> {
           p.firstWordId === rightWord.id ||
           p.secondWordId === rightWord.id,
       );
-      if (alreadyPaired) {
-        return prev;
-      }
+      if (alreadyPaired) return prev;
 
-      if (pairsForPuzzle.length >= MAX_PAIRS_PER_PUZZLE) {
-        return prev;
-      }
+      if (pairsForPuzzle.length >= MAX_PAIRS_PER_PUZZLE) return prev;
 
-      const newPair: SelectedSwitchPair = {
-        firstWordId: wordId,
-        secondWordId: rightWord.id,
-      };
+      const newPair: SelectedSwitchPair = { firstWordId: wordId, secondWordId: rightWord.id };
 
       const nextPairsForPuzzle = [...pairsForPuzzle, newPair];
+      const nextAll = [...prev.selectedPairsPerPuzzle];
+      nextAll[currentIndex] = nextPairsForPuzzle;
 
       return {
         ...prev,
-        selectedPairs: {
-          ...prev.selectedPairs,
-          [currentIndex]: nextPairsForPuzzle,
-        },
-        openWordId: null,
-        openWordIndex: null,
+        selectedPairsPerPuzzle: nextAll,
         feedbackKey: null,
       };
     });
@@ -184,64 +173,39 @@ export class SwitchView extends React.Component<Props, State> {
 
   handleNext(): void {
     this.setState((prev) => {
-      const { currentIndex, riddles, selectedPairs } = prev;
+      const { currentIndex, riddles, selectedPairsPerPuzzle } = prev;
       if (currentIndex >= riddles.length - 1) return prev;
 
-      const pairsForPuzzle = selectedPairs[currentIndex] ?? [];
+      const pairsForPuzzle = selectedPairsPerPuzzle[currentIndex] ?? [];
       if (pairsForPuzzle.length === 0) {
         return { ...prev, feedbackKey: 'needSelection' };
       }
 
-      return {
-        ...prev,
-        currentIndex: currentIndex + 1,
-        openWordId: null,
-        openWordIndex: null,
-        feedbackKey: null,
-      };
+      return { ...prev, currentIndex: currentIndex + 1, feedbackKey: null };
     });
   }
 
   handlePrev(): void {
     this.setState((prev) => {
       if (prev.currentIndex === 0) return prev;
-      return {
-        ...prev,
-        currentIndex: prev.currentIndex - 1,
-        openWordId: null,
-        openWordIndex: null,
-        feedbackKey: null,
-      };
+      return { ...prev, currentIndex: prev.currentIndex - 1, feedbackKey: null };
     });
   }
 
   handlePause(): void {
-    this.setState({
-      isPaused: true,
-      showPauseModal: true,
-    });
+    this.setState({ isPaused: true, showPauseModal: true });
   }
 
   handleResume(): void {
-    this.setState({
-      isPaused: false,
-      showPauseModal: false,
-    });
+    this.setState({ isPaused: false, showPauseModal: false });
   }
 
   handleResetCurrent(): void {
     this.setState((prev) => {
       const { currentIndex } = prev;
-      return {
-        ...prev,
-        selectedPairs: {
-          ...prev.selectedPairs,
-          [currentIndex]: [],
-        },
-        openWordId: null,
-        openWordIndex: null,
-        feedbackKey: null,
-      };
+      const next = [...prev.selectedPairsPerPuzzle];
+      next[currentIndex] = [];
+      return { ...prev, selectedPairsPerPuzzle: next, feedbackKey: null };
     });
   }
 
@@ -250,63 +214,54 @@ export class SwitchView extends React.Component<Props, State> {
       this.setState({ showFinishConfirm: true });
       return;
     }
-    this.finishInternal();
+    void this.finishInternal();
   }
 
-  finishInternal(): void {
-    const { riddles, selectedPairs, totalSeconds } = this.state;
-    const { onFinishLevel } = this.props;
+  async finishInternal(): Promise<void> {
+    const { riddles, selectedPairsPerPuzzle, totalSeconds, switchGameId } = this.state;
 
-    if (riddles.length === 0) {
-      const empty: GameResults = {
-        score: 0,
-        accuracy: 0,
-        totalMistakes: 0,
-        totalPuzzles: 0,
-        completedPuzzles: 0,
-        timeSeconds: 0,
-      };
-      onFinishLevel(empty);
+    if (!switchGameId) {
+      console.error('Brak switchGameId — nie mogę wysłać submit.');
       return;
     }
 
-    const totalPuzzles = riddles.length;
+    const selectedPairs = selectedPairsPerPuzzle.flatMap((arr) => arr);
 
-    const completedPuzzles = riddles.reduce((acc, _r, index) => {
-      const pairs = selectedPairs[index] ?? [];
-      return acc + (pairs.length > 0 ? 1 : 0);
-    }, 0);
-
-    const totalPossibleCorrect = CORRECT_SWITCH_SET.size * totalPuzzles;
-
-    let correctPairs = 0;
-    let mistakes = 0;
-
-    riddles.forEach((_r, index) => {
-      const pairs = selectedPairs[index] ?? [];
-      pairs.forEach((p) => {
-        const id = normalizePairId(p.firstWordId, p.secondWordId);
-        if (CORRECT_SWITCH_SET.has(id)) {
-          correctPairs += 1;
-        } else {
-          mistakes += 1;
-        }
-      });
-    });
-
-    const accuracy = totalPossibleCorrect === 0 ? 0 : correctPairs / totalPossibleCorrect;
-    const score = Math.round(accuracy * 100);
-
-    const results: GameResults = {
-      score,
-      accuracy,
-      totalMistakes: mistakes,
-      totalPuzzles,
-      completedPuzzles,
-      timeSeconds: totalSeconds,
+    const payload: SwitchAnswerRequest = {
+      type: 'switch',
+      gameId: switchGameId,
+      selectedPairs,
+      elapsedTimeMs: totalSeconds * 1000,
     };
 
-    onFinishLevel(results);
+    const response = await this.props.apiClient.submitSwitchAnswers(payload);
+
+    const bookId = this.props.bookId ?? 0;
+    const chapter = this.props.chapter ?? 0;
+
+    const resultsBody: ResultsCreateRequest = {
+      book_id: bookId,
+      extract_no: chapter,
+      puzzle_type: this.props.type,
+      score: response?.score ?? 0,
+      duration_sec: Math.round(totalSeconds),
+      played_at: new Date().toISOString(),
+      accuracy: response?.accuracy ?? 0,
+      pagesCompleted: response?.pagesCompleted ?? 0,
+      mistakes: response?.mistakes ?? 0,
+    };
+
+    const sessionId = localStorage.getItem('session_id');
+    if (sessionId) {
+      try {
+        await this.props.apiClient.createResults(resultsBody, sessionId);
+      } catch (e) {
+        console.error('Failed to POST /results:', e);
+      }
+    }
+
+    const results = mapSubmitToGameResults(response, riddles.length);
+    this.props.onFinishLevel(results);
   }
 
   render(): React.ReactNode {
@@ -402,7 +357,7 @@ export class SwitchView extends React.Component<Props, State> {
           <SwitchGame
             riddle={riddle}
             selectedPairs={pairsForCurrent}
-            openWordId={this.state.openWordId}
+            openWordId={null}
             onWordClick={this.handleWordClick}
           />
 
@@ -449,17 +404,13 @@ export class SwitchView extends React.Component<Props, State> {
             </Button>
           </Flex>
 
-          <Flex
-            justify="flex-end"
+          <Button
             mt={4}
+            onClick={this.handleFinishClick}
+            backgroundColor="#1e3932"
           >
-            <Button
-              backgroundColor="#1e3932"
-              onClick={this.handleFinishClick}
-            >
-              {t.finishButtonLabel}
-            </Button>
-          </Flex>
+            {t.finishButtonLabel}
+          </Button>
         </Stack>
 
         {showPauseModal && (
@@ -554,7 +505,7 @@ export class SwitchView extends React.Component<Props, State> {
                   <Button
                     backgroundColor="#1e3932"
                     onClick={() => {
-                      this.setState({ showFinishConfirm: false }, () => this.finishInternal());
+                      this.setState({ showFinishConfirm: false }, () => void this.finishInternal());
                     }}
                   >
                     {t.finishEarlyConfirm}

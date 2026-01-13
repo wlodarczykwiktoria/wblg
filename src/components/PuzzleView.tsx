@@ -8,12 +8,17 @@ import { FillGapsGame, type AnswersState } from './puzzles/FillGapsGame';
 import type { Language } from '../i18n';
 import { translations } from '../i18n';
 import type { GameResults } from '../gameTypes';
+import type { FillGapsAnswerRequest, ResultsCreateRequest } from '../api/modelV2.ts';
+import { mapSubmitToGameResults } from '../shared/utils/mappers.utils.ts';
 
 type Props = {
   apiClient: ApiClient;
   extractId: number;
-  type: string; // np. "fill-gaps"
+  type: string;
   language: Language;
+  bookId: number;
+  chapter: number;
+
   onBackToHome(): void;
   onFinishLevel(results: GameResults): void;
 };
@@ -26,24 +31,45 @@ type State = {
   riddles: Riddle[];
   currentIndex: number;
   answersPerPuzzle: AnswersState[];
+  gapOffsets: number[];
   totalSeconds: number;
   feedbackKey: FeedbackKey;
   isPaused: boolean;
   showPauseModal: boolean;
   showFinishConfirm: boolean;
+  fillGapsGameId: number | null;
 };
 
-const NUM_PUZZLES = 5;
+// ---------- GLOBAL GAP HELPERS (ważne!) ----------
+function countGaps(riddle: Riddle): number {
+  return riddle.prompt.parts.filter((p) => p.type === 'gap').length;
+}
 
-// poprawne odpowiedzi (mock – hardcode)
-const CORRECT_MAP: Record<string, string> = {
-  g1: 'w1',
-  g2: 'w2',
-  g3: 'w3',
-  g4: 'w4',
-  g5: 'w5',
-  g6: 'w6',
-};
+// offsety: puzzle0 -> 0, puzzle1 -> liczba gapów z puzzle0, itd.
+function buildGapOffsets(riddles: Riddle[]): number[] {
+  const offsets: number[] = [];
+  let sum = 0;
+  for (let i = 0; i < riddles.length; i++) {
+    offsets[i] = sum;
+    sum += countGaps(riddles[i]);
+  }
+  return offsets;
+}
+
+// globalne ID dla gapów: gap-(offset + 1..N) dla danego puzzla
+function getGlobalGapIds(riddle: Riddle, gapOffset: number): string[] {
+  let local = 0;
+
+  return riddle.prompt.parts
+    .map((p) => {
+      if (p.type !== 'gap') return null;
+      const id = `gap-${gapOffset + local}`;
+      local += 1;
+      return id;
+    })
+    .filter((x): x is string => x !== null);
+}
+// -----------------------------------------------
 
 export class PuzzleView extends React.Component<Props, State> {
   private timerId: number | null = null;
@@ -57,11 +83,13 @@ export class PuzzleView extends React.Component<Props, State> {
       riddles: [],
       currentIndex: 0,
       answersPerPuzzle: [],
+      gapOffsets: [],
       totalSeconds: 0,
       feedbackKey: null,
       isPaused: false,
       showPauseModal: false,
       showFinishConfirm: false,
+      fillGapsGameId: null,
     };
 
     this.startLevel = this.startLevel.bind(this);
@@ -75,7 +103,7 @@ export class PuzzleView extends React.Component<Props, State> {
   }
 
   componentDidMount(): void {
-    this.startLevel(this.props.extractId, this.props.type);
+    void this.startLevel(this.props.extractId, this.props.type);
 
     this.timerId = window.setInterval(() => {
       this.setState((prev) => {
@@ -91,8 +119,9 @@ export class PuzzleView extends React.Component<Props, State> {
     }
   }
 
-  private isPuzzleComplete(answers: AnswersState): boolean {
-    return Object.keys(CORRECT_MAP).every((gapId) => answers[gapId] !== null && answers[gapId] !== undefined);
+  private isPuzzleComplete(riddle: Riddle, answers: AnswersState, gapOffset: number): boolean {
+    const gapIds = getGlobalGapIds(riddle, gapOffset);
+    return gapIds.every((id) => answers[id] != null);
   }
 
   async startLevel(extractId: number, type: string): Promise<void> {
@@ -104,19 +133,45 @@ export class PuzzleView extends React.Component<Props, State> {
       showFinishConfirm: false,
     });
 
+    if (type === 'fill-gaps') {
+      const riddle = await this.props.apiClient.startFillGapsGame(this.props.bookId, this.props.chapter);
+
+      const gameId = riddle[0].gameId;
+      const riddles: Riddle[] = riddle.map((x) => x.riddle);
+
+      const gapOffsets = buildGapOffsets(riddles);
+
+      const answersPerPuzzle: AnswersState[] = riddles.map((rdl, idx) => {
+        const m: AnswersState = {};
+        const ids = getGlobalGapIds(rdl, gapOffsets[idx]);
+        ids.forEach((id) => (m[id] = null));
+        return m;
+      });
+
+      this.setState({
+        loading: false,
+        level: null,
+        riddles,
+        answersPerPuzzle,
+        gapOffsets,
+        currentIndex: 0,
+        feedbackKey: null,
+        totalSeconds: 0,
+        fillGapsGameId: gameId,
+      });
+
+      return;
+    }
+
     const level = await this.props.apiClient.createLevel(extractId, type);
     const riddlesFromApi = await this.props.apiClient.getRiddles(level.levelId);
 
-    const riddles = riddlesFromApi.slice(0, NUM_PUZZLES);
+    const riddles = riddlesFromApi.slice(0, riddlesFromApi.length);
+    const gapOffsets = buildGapOffsets(riddles);
 
-    const firstRiddle = riddles[0];
-    const gapIds = firstRiddle.prompt.parts.filter((p) => p.type === 'gap').map((p) => (p as any).id as string);
-
-    const answersPerPuzzle: AnswersState[] = riddles.map(() => {
+    const answersPerPuzzle: AnswersState[] = riddles.map((rdl, idx) => {
       const m: AnswersState = {};
-      gapIds.forEach((id) => {
-        m[id] = null;
-      });
+      getGlobalGapIds(rdl, gapOffsets[idx]).forEach((id) => (m[id] = null));
       return m;
     });
 
@@ -125,6 +180,7 @@ export class PuzzleView extends React.Component<Props, State> {
       level,
       riddles,
       answersPerPuzzle,
+      gapOffsets,
       currentIndex: 0,
       feedbackKey: null,
       totalSeconds: 0,
@@ -140,60 +196,67 @@ export class PuzzleView extends React.Component<Props, State> {
   }
 
   async finishInternal(): Promise<void> {
-    const { level, answersPerPuzzle, riddles, totalSeconds } = this.state;
-    if (!level || riddles.length === 0) return;
+    const { riddles, answersPerPuzzle, totalSeconds, fillGapsGameId } = this.state;
+    if (riddles.length === 0) return;
 
-    const totalGapsPerPuzzle = Object.keys(CORRECT_MAP).length;
-
-    let totalCorrect = 0;
-    let totalMistakes = 0;
-    let completedPuzzles = 0;
-
-    for (const answers of answersPerPuzzle) {
-      if (!this.isPuzzleComplete(answers)) {
-        continue;
-      }
-      completedPuzzles += 1;
-
-      for (const gapId of Object.keys(CORRECT_MAP)) {
-        const userWord = answers[gapId];
-        if (!userWord) continue;
-        if (userWord === CORRECT_MAP[gapId]) {
-          totalCorrect += 1;
-        } else {
-          totalMistakes += 1;
-        }
-      }
+    if (!fillGapsGameId) {
+      console.error('Brak fillGapsGameId — nie mogę wysłać submit.');
+      return;
     }
 
-    const totalGaps = completedPuzzles * totalGapsPerPuzzle;
-    const accuracy = totalGaps === 0 ? 0 : totalCorrect / totalGaps;
-    const score = Math.max(0, Math.min(100, Math.round(accuracy * 100)));
+    const payloadAnswers = answersPerPuzzle.flatMap((answersMap) =>
+      Object.entries(answersMap)
+        .filter(([, optionId]) => optionId != null)
+        .map(([gapId, optionId]) => ({
+          gapIndex: Number(String(gapId).replace('gap-', '')),
+          optionId: String(optionId),
+        })),
+    );
 
-    await this.props.apiClient.finishLevel(level.levelId);
-
-    if (this.timerId !== null) {
-      window.clearInterval(this.timerId);
-      this.timerId = null;
-    }
-
-    const results: GameResults = {
-      score,
-      accuracy,
-      totalMistakes,
-      totalPuzzles: riddles.length,
-      completedPuzzles,
-      timeSeconds: totalSeconds,
+    const payload: FillGapsAnswerRequest = {
+      type: 'fill-gaps',
+      gameId: fillGapsGameId,
+      answers: payloadAnswers,
+      elapsedTimeMs: totalSeconds * 1000,
     };
 
+    const response = await this.props.apiClient.submitFillGapsAnswers(payload);
+    console.log('FillGaps submit response:', response);
+
+    const resultsBody: ResultsCreateRequest = {
+      book_id: this.props.bookId,
+      extract_no: this.props.chapter,
+      puzzle_type: this.props.type,
+      score: response?.score ?? 0,
+      duration_sec: Math.round(totalSeconds),
+      played_at: new Date().toISOString(),
+      accuracy: response?.accuracy ?? 0,
+      pagesCompleted: response?.pagesCompleted ?? 0,
+      mistakes: response?.mistakes ?? 0,
+    };
+
+    const sessionId = localStorage.getItem('session_id');
+    if (!sessionId) throw new Error('No session_id in localStorage (session not created yet)');
+
+
+    try {
+      const saved = await this.props.apiClient.createResults(resultsBody, sessionId);
+      console.log('Saved results:', saved);
+    } catch (e) {
+      console.error('Failed to POST /results:', e);
+    }
+
+    const results = mapSubmitToGameResults(response, riddles.length);
     this.props.onFinishLevel(results);
   }
 
   handleFinishClick(): void {
-    const { answersPerPuzzle, riddles } = this.state;
-    const allComplete = answersPerPuzzle.every((a) => this.isPuzzleComplete(a));
-
+    const { answersPerPuzzle, riddles, gapOffsets } = this.state;
     if (riddles.length === 0) return;
+
+    const allComplete = answersPerPuzzle.every((a, idx) =>
+      this.isPuzzleComplete(riddles[idx], a, gapOffsets[idx] ?? 0),
+    );
 
     if (allComplete) {
       void this.finishInternal();
@@ -212,8 +275,11 @@ export class PuzzleView extends React.Component<Props, State> {
 
   goNext(): void {
     this.setState((prev) => {
+      const riddle = prev.riddles[prev.currentIndex];
       const currentAnswers = prev.answersPerPuzzle[prev.currentIndex];
-      if (!this.isPuzzleComplete(currentAnswers)) {
+      const gapOffset = prev.gapOffsets[prev.currentIndex] ?? 0;
+
+      if (!this.isPuzzleComplete(riddle, currentAnswers, gapOffset)) {
         return { ...prev, feedbackKey: 'needAll' };
       }
 
@@ -247,21 +313,18 @@ export class PuzzleView extends React.Component<Props, State> {
       currentIndex,
       totalSeconds,
       answersPerPuzzle,
+      gapOffsets,
       feedbackKey,
       showPauseModal,
       showFinishConfirm,
     } = this.state;
+
     const t = translations[this.props.language];
 
     if (loading || riddles.length === 0) {
       return (
         <Box>
-          <Button
-            size="sm"
-            mb={4}
-            variant="ghost"
-            onClick={this.props.onBackToHome}
-          >
+          <Button size="sm" mb={4} variant="ghost" onClick={this.props.onBackToHome}>
             ← {t.back}
           </Button>
           <Spinner />
@@ -271,6 +334,7 @@ export class PuzzleView extends React.Component<Props, State> {
 
     const riddle = riddles[currentIndex];
     const currentAnswers = answersPerPuzzle[currentIndex];
+    const currentGapOffset = gapOffsets[currentIndex] ?? 0;
 
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
@@ -279,29 +343,15 @@ export class PuzzleView extends React.Component<Props, State> {
     const feedbackText = feedbackKey === 'needAll' ? t.needAnswerAllLabel : null;
 
     return (
-      <Box
-        position="relative"
-        maxW="5xl"
-        mx="auto"
-      >
+      <Box position="relative" maxW="5xl" mx="auto">
         <Stack>
-          <Flex
-            justify="right"
-            align="center"
-          >
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={this.handlePause}
-            >
+          <Flex justify="right" align="center">
+            <Button size="sm" variant="outline" onClick={this.handlePause}>
               {t.pauseLabel}
             </Button>
           </Flex>
 
-          <Flex
-            justify="space-between"
-            align="center"
-          >
+          <Flex justify="space-between" align="center">
             <Heading size="sm">
               {t.puzzleOfLabel} {currentIndex + 1}/{riddles.length}
             </Heading>
@@ -310,10 +360,7 @@ export class PuzzleView extends React.Component<Props, State> {
             </Text>
           </Flex>
 
-          <Heading
-            size="md"
-            mt={2}
-          >
+          <Heading size="md" mt={2}>
             {t.puzzleHeading}
           </Heading>
 
@@ -322,82 +369,36 @@ export class PuzzleView extends React.Component<Props, State> {
             riddle={riddle}
             language={this.props.language}
             initialAnswers={currentAnswers}
+            gapOffset={currentGapOffset} // ✅ tu przekazujemy offset globalny
             onChange={(answers) => this.handleAnswersChange(currentIndex, answers)}
           />
 
           {feedbackText && (
-            <Box
-              borderWidth="1px"
-              borderRadius="md"
-              p={3}
-              bg="red.50"
-            >
+            <Box borderWidth="1px" borderRadius="md" p={3} bg="red.50">
               <Text>{feedbackText}</Text>
             </Box>
           )}
 
-          <Flex
-            justify="space-between"
-            mt={2}
-          >
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={this.goPrev}
-              disabled={currentIndex === 0}
-            >
+          <Flex justify="space-between" mt={2}>
+            <Button size="sm" variant="outline" onClick={this.goPrev} disabled={currentIndex === 0}>
               ← {t.prevPuzzleLabel}
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={this.goNext}
-              disabled={currentIndex === riddles.length - 1}
-            >
+            <Button size="sm" variant="outline" onClick={this.goNext} disabled={currentIndex === riddles.length - 1}>
               {t.nextPuzzleLabel} →
             </Button>
           </Flex>
 
-          <Button
-            mt={4}
-            onClick={this.handleFinishClick}
-            backgroundColor="#1e3932"
-          >
+          <Button mt={4} onClick={this.handleFinishClick} backgroundColor="#1e3932">
             {t.finishButtonLabel}
           </Button>
         </Stack>
 
         {showPauseModal && (
-          <Box
-            position="fixed"
-            inset={0}
-            bg="blackAlpha.500"
-            backdropFilter="blur(4px)"
-            zIndex={1400}
-          >
-            <Flex
-              h="100%"
-              align="center"
-              justify="center"
-            >
-              <Box
-                bg="white"
-                borderRadius="xl"
-                p={6}
-                maxW="sm"
-                w="90%"
-                position="relative"
-              >
-                <CloseButton
-                  position="absolute"
-                  right={3}
-                  top={3}
-                  onClick={() => this.handleResume()}
-                />
-                <Heading
-                  size="md"
-                  mb={3}
-                >
+          <Box position="fixed" inset={0} bg="blackAlpha.500" backdropFilter="blur(4px)" zIndex={1400}>
+            <Flex h="100%" align="center" justify="center">
+              <Box bg="white" borderRadius="xl" p={6} maxW="sm" w="90%" position="relative">
+                <CloseButton position="absolute" right={3} top={3} onClick={() => this.handleResume()} />
+                <Heading size="md" mb={3}>
                   {t.pauseLabel}
                 </Heading>
                 <Text mb={6}>
@@ -405,10 +406,7 @@ export class PuzzleView extends React.Component<Props, State> {
                     ? 'Gra jest wstrzymana. Możesz w każdej chwili wznowić.'
                     : 'The game is paused. You can resume at any time.'}
                 </Text>
-                <Button
-                  backgroundColor="#1e3932"
-                  onClick={() => this.handleResume()}
-                >
+                <Button backgroundColor="#1e3932" onClick={() => this.handleResume()}>
                   {t.resumeLabel}
                 </Button>
               </Box>
@@ -417,53 +415,19 @@ export class PuzzleView extends React.Component<Props, State> {
         )}
 
         {showFinishConfirm && (
-          <Box
-            position="fixed"
-            inset={0}
-            bg="blackAlpha.500"
-            backdropFilter="blur(4px)"
-            zIndex={1400}
-          >
-            <Flex
-              h="100%"
-              align="center"
-              justify="center"
-            >
-              <Box
-                bg="white"
-                borderRadius="xl"
-                p={6}
-                maxW="sm"
-                w="90%"
-                position="relative"
-              >
-                <CloseButton
-                  position="absolute"
-                  right={3}
-                  top={3}
-                  onClick={() => this.setState({ showFinishConfirm: false })}
-                />
-                <Heading
-                  size="md"
-                  mb={3}
-                >
+          <Box position="fixed" inset={0} bg="blackAlpha.500" backdropFilter="blur(4px)" zIndex={1400}>
+            <Flex h="100%" align="center" justify="center">
+              <Box bg="white" borderRadius="xl" p={6} maxW="sm" w="90%" position="relative">
+                <CloseButton position="absolute" right={3} top={3} onClick={() => this.setState({ showFinishConfirm: false })} />
+                <Heading size="md" mb={3}>
                   {t.finishEarlyTitle}
                 </Heading>
                 <Text mb={6}>{t.finishEarlyMessage}</Text>
-                <Flex
-                  justify="flex-end"
-                  gap={3}
-                >
-                  <Button
-                    variant="outline"
-                    onClick={() => this.setState({ showFinishConfirm: false })}
-                  >
+                <Flex justify="flex-end" gap={3}>
+                  <Button variant="outline" onClick={() => this.setState({ showFinishConfirm: false })}>
                     {t.finishEarlyCancel}
                   </Button>
-                  <Button
-                    backgroundColor="#1e3932"
-                    onClick={() => this.finishInternal()}
-                  >
+                  <Button backgroundColor="#1e3932" onClick={() => this.finishInternal()}>
                     {t.finishEarlyConfirm}
                   </Button>
                 </Flex>

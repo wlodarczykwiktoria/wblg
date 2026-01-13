@@ -138,6 +138,8 @@ export class GameSelectionView extends React.Component<Props, State> {
               opacity: 0.95,
             }}
             cursor="pointer"
+            color="#1e3932"
+            fontSize="xl"
           >
             <Text
               fontWeight="bold"

@@ -1,15 +1,17 @@
 // src/components/ProgressView.tsx
 
 import React from 'react';
-import { Box, Button, Heading, SimpleGrid, Text } from '@chakra-ui/react';
+import { Box, Button, Flex, Heading, SimpleGrid, Spinner, Text } from '@chakra-ui/react';
 import type { Book } from '../api/types';
 import type { Language } from '../i18n';
 import { translations } from '../i18n';
-import type { BookProgress, ChapterProgress } from '../storage/progressStorage';
-import type { ResultsLatestResponse } from '../api/modelV2.ts';
-import { getGenreLabel } from './genreTranslations.ts';
+import type { BookProgress } from '../storage/progressStorage';
+import type { ResultsLatestResponse, ResultsSummaryResponse } from '../api/modelV2';
+import { getGenreLabel } from './genreTranslations';
+import type { ApiClient } from '../api/ApiClient';
 
 type Props = {
+  apiClient: ApiClient;
   language: Language;
   books: Book[];
   progress: BookProgress[];
@@ -18,18 +20,28 @@ type Props = {
 
 type State = {
   selectedBookId: number | null;
-  loading: boolean;
+  loadingList: boolean;
   apiProgress: BookProgress[];
   apiBooks: Book[];
   error: string | null;
+  loadingSummary: boolean;
+  summary: ResultsSummaryResponse | null;
+  summaryError: string | null;
 };
 
-function formatTime(seconds: number): string {
+function formatTime(secondsRaw: unknown): string {
+  const seconds = Number(secondsRaw);
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
   const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  const mm = m.toString();
-  const ss = s.toString().padStart(2, '0');
-  return `${mm}:${ss}`;
+  const s = Math.round(seconds % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function formatAccuracy(accRaw: unknown): string {
+  const acc = Number(accRaw);
+  if (!Number.isFinite(acc) || acc < 0) return '0%';
+  const percent = acc <= 1 ? Math.round(acc * 100) : Math.round(acc);
+  return `${percent}%`;
 }
 
 function mapProgressSummaryToUi(
@@ -70,12 +82,20 @@ export class ProgressView extends React.Component<Props, State> {
     super(props);
     this.state = {
       selectedBookId: null,
-      loading: true,
+
+      loadingList: true,
       apiProgress: [],
       apiBooks: [],
       error: null,
+
+      loadingSummary: false,
+      summary: null,
+      summaryError: null,
     };
+
     this.handleRowClick = this.handleRowClick.bind(this);
+    this.closeModal = this.closeModal.bind(this);
+    this.loadSummaryForBook = this.loadSummaryForBook.bind(this);
   }
 
   private get effectiveBooks(): Book[] {
@@ -88,16 +108,14 @@ export class ProgressView extends React.Component<Props, State> {
 
   async componentDidMount() {
     try {
-      this.setState({ loading: true, error: null });
+      this.setState({ loadingList: true, error: null });
 
       const sessionId = localStorage.getItem('session_id');
       if (!sessionId) throw new Error('No session_id in localStorage (session not created yet)');
 
       const res = await fetch('https://wblg-backend-1007953962746.europe-west1.run.app/progress/summary', {
         method: 'GET',
-        headers: {
-          'X-Session-Id': sessionId,
-        },
+        headers: { 'X-Session-Id': sessionId },
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -106,32 +124,22 @@ export class ProgressView extends React.Component<Props, State> {
       const safe = Array.isArray(data) ? data : [];
       const mapped = mapProgressSummaryToUi(safe, this.props.language);
 
-      console.log(mapped);
       this.setState({
         apiBooks: mapped.books,
         apiProgress: mapped.progress,
-        loading: false,
+        loadingList: false,
         error: null,
       });
     } catch (e: unknown) {
-      let errorMessage = 'Failed to load results';
-
-      if (e instanceof Error) {
-        errorMessage = e.message;
-      }
-
+      const errorMessage = e instanceof Error ? e.message : 'Failed to load results';
       console.error('Failed to load results', e);
-
       this.setState({
         apiProgress: [],
-        loading: false,
+        apiBooks: [],
+        loadingList: false,
         error: errorMessage,
       });
     }
-  }
-
-  handleRowClick(bookId: number): void {
-    this.setState({ selectedBookId: bookId });
   }
 
   get booksWithProgress(): Array<Book & { completedChapters: number }> {
@@ -145,96 +153,156 @@ export class ProgressView extends React.Component<Props, State> {
     });
   }
 
-  renderChaptersForBook(bookId: number) {
+  async loadSummaryForBook(bookId: number) {
+    try {
+      this.setState({ loadingSummary: true, summary: null, summaryError: null });
+
+      const sessionId = localStorage.getItem('session_id');
+      if (!sessionId) throw new Error('No session_id in localStorage (session not created yet)');
+
+
+      const summary = await this.props.apiClient.getResultsSummary(bookId, sessionId);
+      this.setState({ loadingSummary: false, summary, summaryError: null });
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Failed to load summary';
+      this.setState({ loadingSummary: false, summary: null, summaryError: errorMessage });
+    }
+  }
+
+  handleRowClick(bookId: number): void {
+    this.setState({ selectedBookId: bookId });
+    void this.loadSummaryForBook(bookId);
+  }
+
+  closeModal(): void {
+    this.setState({
+      selectedBookId: null,
+      loadingSummary: false,
+      summary: null,
+      summaryError: null,
+    });
+  }
+
+  private renderSummaryModal(selectedBook: Book & { completedChapters: number }) {
     const { language } = this.props;
     const t = translations[language];
+    const { loadingSummary, summary, summaryError } = this.state;
 
-    const progress = this.effectiveProgress;
-    const bookProgress = progress.find((bp) => bp.bookId === bookId);
-
-    if (!bookProgress) {
-      return (
-        <Text
-          mt={4}
-          fontSize="sm"
-        >
-          {language === 'pl' ? 'Brak danych o postępie dla tej książki.' : 'No progress data for this book yet.'}
-        </Text>
-      );
-    }
-
-    const chapters = bookProgress.chapters;
+    const completed = summary?.chapters_completed ?? selectedBook.completedChapters ?? 0;
+    const total = selectedBook.chapters ?? 0;
+    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     return (
-      <Box mt={6}>
-        <Heading
-          size="sm"
-          mb={3}
+      <Box
+        position="fixed"
+        inset={0}
+        bg="blackAlpha.500"
+        backdropFilter="blur(4px)"
+        zIndex={1500}
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        onClick={this.closeModal} // klik w tło zamyka
+      >
+        <Box
+          bg="white"
+          borderRadius="2xl"
+          boxShadow="2xl"
+          p={10}
+          border="1px solid #e2e8f0"
+          width="min(720px, 92vw)"
+          maxH="85vh"
+          overflowY="auto"
+          onClick={(e) => e.stopPropagation()} // klik w kartę nie zamyka
+          textAlign="center"
         >
-          {language === 'pl' ? 'Rozdziały' : 'Chapters'}
-        </Heading>
+          <Heading size="md" mb={2} color="green.600" fontWeight="extrabold">
+            {selectedBook.title}
+          </Heading>
+          <Text mb={8} color="gray.500" fontSize="md">
+            {selectedBook.author}
+          </Text>
 
-        <SimpleGrid
-          columns={{ base: 1, md: 3 }}
-          columnGap={4}
-          rowGap={4}
-          mt={4}
-          mx={2}
-        >
-          {chapters.map((ch: ChapterProgress) => {
-            const completed = ch.completed;
+          {/* progress box jak ResultsScreen */}
+          <Box mx="auto" maxW="sm" borderWidth="1px" borderRadius="2xl" p={6} mb={8} bg="gray.50" boxShadow="md">
+            <Text fontSize="xs" textTransform="uppercase" letterSpacing="wide" color="gray.500" mb={2}>
+              {language === 'pl' ? 'Chapters completed' : 'Chapters completed'}
+            </Text>
 
-            return (
-              <Box
-                key={ch.id}
-                borderWidth="1px"
-                borderRadius="lg"
-                p={4}
-                bg={completed ? 'white' : 'gray.100'}
-                opacity={completed ? 1 : 0.7}
-              >
-                <Text
-                  fontWeight="semibold"
-                  mb={1}
-                >
-                  {ch.title}
-                </Text>
-                <Text
-                  fontSize="xs"
-                  color="gray.500"
-                  mb={2}
-                >
-                  {ch.numberLabel}
-                </Text>
+            <Heading size="2xl" color="green.500" fontWeight="extrabold">
+              {completed}/{total}
+            </Heading>
 
-                {completed ? (
-                  <>
-                    <Text fontSize="sm">
-                      {t.chapterScoreLabel}: {ch.scorePercent}%
-                    </Text>
-                    <Text fontSize="sm">
-                      {t.chapterTimeLabel}: {formatTime(ch.timeSeconds)}
-                    </Text>
-                  </>
-                ) : (
-                  <Text
-                    fontSize="sm"
-                    color="gray.600"
-                  >
-                    {t.chapterNotCompletedLabel}
+            <Text color="gray.600" mb={4}>
+              {percent}%
+            </Text>
+
+            <Box h="3" borderRadius="full" bg="gray.200" overflow="hidden" mt={2}>
+              <Box h="100%" width={`${percent}%`} bg="green.400" transition="width 0.5s" />
+            </Box>
+          </Box>
+
+          {loadingSummary && (
+            <Flex justify="center" py={4}>
+              <Spinner />
+            </Flex>
+          )}
+
+          {summaryError && (
+            <Text mt={2} fontSize="sm" color="red.500">
+              {summaryError}
+            </Text>
+          )}
+
+          {summary && (
+            <Box mx="auto" maxW="md" borderWidth="1px" borderRadius="2xl" p={6} mb={4} bg="white" boxShadow="md">
+              <Text fontSize="sm" fontWeight="semibold" mb={4}>
+                {language === 'pl' ? 'Podsumowanie' : 'Summary'}
+              </Text>
+
+              <SimpleGrid columns={{ base: 1, md: 3 }} >
+                <Box borderRadius="xl" bg="green.50" p={4} boxShadow="sm">
+                  <Text fontSize="xs" color="gray.500">
+                    {language === 'pl' ? 'Śr. dokładność' : 'Avg accuracy'}
                   </Text>
-                )}
-              </Box>
-            );
-          })}
-        </SimpleGrid>
+                  <Heading size="md">{formatAccuracy(summary.avg_accuracy)}</Heading>
+                </Box>
+
+                <Box borderRadius="xl" bg="blue.50" p={4} boxShadow="sm">
+                  <Text fontSize="xs" color="gray.500">
+                    {language === 'pl' ? 'Śr. czas' : 'Avg duration'}
+                  </Text>
+                  <Heading size="md">{formatTime(summary.avg_duration_sec)}</Heading>
+                </Box>
+
+                <Box borderRadius="xl" bg="purple.50" p={4} boxShadow="sm">
+                  <Text fontSize="xs" color="gray.500">
+                    {language === 'pl' ? 'Najczęstsza gra' : 'Most played'}
+                  </Text>
+                  <Heading size="md">{summary.most_played_puzzle_type}</Heading>
+                </Box>
+              </SimpleGrid>
+            </Box>
+          )}
+
+          {/* ✅ Back + Close obok siebie i równa szerokość */}
+          <Flex justify="center" gap={4} mt={8}>
+            <Button variant="outline" width="160px" onClick={this.closeModal}>
+              {language === 'pl' ? 'Zamknij' : 'Close'}
+            </Button>
+
+            <Button backgroundColor="#1e3932" color="white" width="160px" onClick={this.props.onBack}>
+              ← {t.back}
+            </Button>
+          </Flex>
+        </Box>
       </Box>
     );
   }
 
   render() {
     const { language } = this.props;
-    const { selectedBookId, loading, error } = this.state;
+    const { selectedBookId, loadingList, error } = this.state;
     const t = translations[language];
 
     const books = this.booksWithProgress;
@@ -242,51 +310,28 @@ export class ProgressView extends React.Component<Props, State> {
 
     return (
       <Box>
-        <Heading
-          size="lg"
-          mb={4}
-        >
+        <Heading size="lg" mb={4}>
           {t.progressHeading}
         </Heading>
 
-        <Button
-          size="sm"
-          mb={4}
-          variant="ghost"
-          onClick={this.props.onBack}
-        >
+        <Button size="sm" mb={4} variant="ghost" onClick={this.props.onBack}>
           ← {t.back}
         </Button>
 
-        {loading && (
-          <Text
-            mt={2}
-            fontSize="sm"
-            color="gray.600"
-          >
-            {language === 'pl' ? 'Ładowanie...' : 'Loading...'}
+        {loadingList && (
+          <Text mt={2} fontSize="sm" color="gray.600">
+            {language === 'pl' ? 'Ładowanie…' : 'Loading…'}
           </Text>
         )}
 
         {error && (
-          <Text
-            mt={2}
-            fontSize="sm"
-            color="red.500"
-          >
+          <Text mt={2} fontSize="sm" color="red.500">
             {error}
           </Text>
         )}
 
-        <Box
-          display="flex"
-          px={4}
-          py={2}
-          borderBottomWidth="1px"
-          bg="gray.50"
-          fontWeight="bold"
-          fontSize="sm"
-        >
+        {/* nagłówek tabelki */}
+        <Box display="flex" px={4} py={2} borderBottomWidth="1px" bg="gray.50" fontWeight="bold" fontSize="sm">
           <Box flex="2">{t.columnTitle}</Box>
           <Box flex="2">{t.columnAuthor}</Box>
           <Box flex="1">{t.completedChaptersLabel}</Box>
@@ -309,10 +354,7 @@ export class ProgressView extends React.Component<Props, State> {
             >
               <Box flex="2">
                 <Text fontWeight="medium">{book.title}</Text>
-                <Text
-                  fontSize="sm"
-                  color="gray.500"
-                >
+                <Text fontSize="sm" color="gray.500">
                   {getGenreLabel(book.genre, language)}
                 </Text>
               </Box>
@@ -329,15 +371,13 @@ export class ProgressView extends React.Component<Props, State> {
         })}
 
         {books.length === 0 && (
-          <Text
-            mt={4}
-            fontSize="sm"
-          >
+          <Text mt={4} fontSize="sm">
             {language === 'pl' ? 'Brak książek do wyświetlenia.' : 'No books to display.'}
           </Text>
         )}
 
-        {selectedBook && this.renderChaptersForBook(selectedBook.id)}
+        {/* ✅ Modal */}
+        {selectedBook && this.renderSummaryModal(selectedBook)}
       </Box>
     );
   }

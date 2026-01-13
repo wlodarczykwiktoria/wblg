@@ -5,7 +5,7 @@ import type { ChoiceGap, ChoiceRiddle } from '../../api/modelV2';
 
 type Props = {
   riddle: ChoiceRiddle;
-  selectedOptionsByGap: Record<string, string | null>; // gapId -> optionId
+  selectedOptionsByGap: Record<string, string | null>;
   activeGapId: string | null;
   onGapClick(gapId: string): void;
   onSelectOption(gapId: string, optionId: string): void;
@@ -67,18 +67,22 @@ export const ChoiceGame: React.FC<Props> = ({
                 as="button"
                 key={gapId}
                 onClick={() => onGapClick(gapId)}
-                borderWidth="2px"
-                borderStyle="dashed"
-                borderRadius="md"
                 borderColor={activeGapId === gapId ? 'green.300' : 'green.200'}
+                borderWidth="1px"
+                borderStyle="dashed"
+                borderRadius="xl"
                 bg="green.50"
                 px={3}
-                py={2}
-                mx={1}
-                minW="70px"
+                py={1}
+                my={1}
+                mx={2}
+                minW="80px"
                 display="inline-flex"
                 justifyContent="center"
                 alignItems="center"
+                fontSize="md"
+                fontWeight="normal"
+                color="green.700"
               >
                 <Text fontWeight="semibold">{selectedLabel ?? '_____'}</Text>
               </Box>
@@ -98,6 +102,7 @@ export const ChoiceGame: React.FC<Props> = ({
         display="flex"
         flexDirection="column"
         justifyContent="flex-start"
+
       >
         <Text
           mb={2}
@@ -112,6 +117,20 @@ export const ChoiceGame: React.FC<Props> = ({
               const isSelected = selectedOptionsByGap[activeGap.id] === opt.id;
               return (
                 <Button
+                  px={5}
+                  py={2}
+                  borderWidth="1px"
+                  borderRadius="full"
+                  bg="gray.50"
+                  boxShadow="none"
+                  cursor="grab"
+                  userSelect="none"
+                  fontSize="md"
+                  fontWeight="normal"
+                  color="gray.800"
+                  _hover={{ bg: 'gray.100', transform: 'translateY(-2px)' }}
+                  _active={{ transform: 'translateY(0)' }}
+                  transition="background 0.2s"
                   key={opt.id}
                   size="sm"
                   variant={isSelected ? 'solid' : 'outline'}

@@ -6,35 +6,29 @@ import type { CrossoutRiddle, CrossoutLine } from '../../api/modelV2';
 
 type Props = {
   riddle: CrossoutRiddle;
-  selectedLineId: string | null;
-  onSelect(lineId: string): void;
+  selectedLineIds: string[];
+  onToggle(lineId: string): void;
 };
 
 function getLines(riddle: CrossoutRiddle): CrossoutLine[] {
   return riddle.lines;
 }
 
-export const CrossoutGame: React.FC<Props> = ({ riddle, selectedLineId, onSelect }) => {
+export const CrossoutGame: React.FC<Props> = ({ riddle, selectedLineIds, onToggle }) => {
   const lines = getLines(riddle);
 
   return (
     <Box mt={4}>
-      <Box
-        bg="white"
-        borderRadius="2xl"
-        boxShadow="md"
-        px={10}
-        py={8}
-      >
+      <Box bg="white" borderRadius="2xl" boxShadow="md" px={10} py={8}>
         <VStack align="stretch">
           {lines.map((line) => {
-            const selected = line.id === selectedLineId;
+            const selected = selectedLineIds.includes(line.id);
 
             return (
               <Box
                 key={line.id}
                 as="button"
-                onClick={() => onSelect(line.id)}
+                onClick={() => onToggle(line.id)}
                 w="100%"
                 textAlign="left"
                 px={2}

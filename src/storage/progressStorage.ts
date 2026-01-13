@@ -20,21 +20,6 @@ export type BookProgress = {
 
 const STORAGE_KEY = 'pll_progress';
 
-// function safeParse(json: string | null): unknown {
-//   if (!json) return null;
-//   try {
-//     return JSON.parse(json) as unknown;
-//   } catch {
-//     return null;
-//   }
-// }
-
-// export function loadProgress(): BookProgress[] {
-//   const raw = safeParse(localStorage.getItem(STORAGE_KEY));
-//   if (!raw || !Array.isArray(raw)) return [];
-//   return raw as BookProgress[];
-// }
-
 export function saveProgress(progress: BookProgress[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
 }
@@ -57,40 +42,6 @@ function createEmptyChapters(book: Book): ChapterProgress[] {
   return chapters;
 }
 
-// export function ensureProgressForBooks(books: Book[]): BookProgress[] {
-//   const existing = loadProgress();
-//   const byBookId = new Map<number, BookProgress>();
-//   existing.forEach((bp) => byBookId.set(bp.bookId, bp));
-//
-//   const result: BookProgress[] = [];
-//
-//   books.forEach((book) => {
-//     const existingForBook = byBookId.get(book.id);
-//     if (!existingForBook) {
-//       result.push({
-//         bookId: book.id,
-//         title: book.title,
-//         chapters: createEmptyChapters(book),
-//       });
-//     } else {
-//       let chapters = existingForBook.chapters;
-//       if (chapters.length < book.chapters) {
-//         const extras = createEmptyChapters(book).slice(chapters.length);
-//         chapters = [...chapters, ...extras];
-//       } else if (chapters.length > book.chapters) {
-//         chapters = chapters.slice(0, book.chapters);
-//       }
-//       result.push({
-//         bookId: book.id,
-//         title: book.title,
-//         chapters,
-//       });
-//     }
-//   });
-//
-//   saveProgress(result);
-//   return result;
-// }
 
 export function updateProgressForChapter(
   progress: BookProgress[],

@@ -1,39 +1,40 @@
-// src/components/AnagramView.tsx
-
 import React from 'react';
 import { Box, Button, CloseButton, Flex, Heading, Spinner, Stack, Text } from '@chakra-ui/react';
 import type { ApiClient } from '../api/ApiClient';
+import type { AnagramRiddle, AnagramAnswerRequest, ResultsCreateRequest } from '../api/modelV2';
 import type { Language } from '../i18n';
 import { translations } from '../i18n';
-import type { AnagramRiddle } from '../api/modelV2';
 import type { GameResults } from '../gameTypes';
+import { mapSubmitToGameResults } from '../shared/utils/mappers.utils';
 import { AnagramGame } from './puzzles/AnagramGame';
 
 type Props = {
   apiClient: ApiClient;
   extractId: number;
-  type: string; // "anagram"
+  type: string;
   language: Language;
+
+  bookId?: number;
+  chapter?: number;
+
   onBackToHome(): void;
   onFinishLevel(results: GameResults): void;
 };
-
-type FeedbackKey = 'needSelection' | null;
 
 type State = {
   loading: boolean;
   riddles: AnagramRiddle[];
   currentIndex: number;
-  selections: Record<number, string[]>; // strona -> [wordId...]
+
+  selectedPerPuzzle: string[][];
   totalSeconds: number;
+
   isPaused: boolean;
   showPauseModal: boolean;
   showFinishConfirm: boolean;
-  feedbackKey: FeedbackKey;
-};
 
-// W mocku wiemy, że anagramami są słowa o id 'w2' i 'w7'
-const CORRECT_ANAGRAM_IDS_PER_PUZZLE = ['w2', 'w7'];
+  anagramGameId: number | null;
+};
 
 export class AnagramView extends React.Component<Props, State> {
   private timerId: number | null = null;
@@ -42,29 +43,29 @@ export class AnagramView extends React.Component<Props, State> {
     super(props);
 
     this.state = {
-      loading: true,
+      loading: false,
       riddles: [],
       currentIndex: 0,
-      selections: {},
+      selectedPerPuzzle: [],
       totalSeconds: 0,
       isPaused: false,
       showPauseModal: false,
       showFinishConfirm: false,
-      feedbackKey: null,
+      anagramGameId: null,
     };
 
-    this.loadData = this.loadData.bind(this);
+    this.startGame = this.startGame.bind(this);
+    this.goPrev = this.goPrev.bind(this);
+    this.goNext = this.goNext.bind(this);
     this.handleToggleWord = this.handleToggleWord.bind(this);
-    this.handleNext = this.handleNext.bind(this);
-    this.handlePrev = this.handlePrev.bind(this);
+    this.finishInternal = this.finishInternal.bind(this);
+    this.handleFinishClick = this.handleFinishClick.bind(this);
     this.handlePause = this.handlePause.bind(this);
     this.handleResume = this.handleResume.bind(this);
-    this.handleFinishClick = this.handleFinishClick.bind(this);
-    this.finishInternal = this.finishInternal.bind(this);
   }
 
   componentDidMount(): void {
-    void this.loadData();
+    void this.startGame();
 
     this.timerId = window.setInterval(() => {
       this.setState((prev) => {
@@ -75,208 +76,138 @@ export class AnagramView extends React.Component<Props, State> {
   }
 
   componentWillUnmount(): void {
-    if (this.timerId !== null) {
-      window.clearInterval(this.timerId);
-    }
+    if (this.timerId !== null) window.clearInterval(this.timerId);
   }
 
-  async loadData(): Promise<void> {
-    this.setState({ loading: true });
-    const riddles = await this.props.apiClient.getAnagramRiddles(this.props.extractId);
+  async startGame(): Promise<void> {
     this.setState({
-      riddles,
-      loading: false,
+      loading: true,
+      isPaused: false,
+      showPauseModal: false,
+      showFinishConfirm: false,
       currentIndex: 0,
-      selections: {},
-      feedbackKey: null,
+      totalSeconds: 0,
     });
-  }
 
-  private formatTime(secondsTotal: number): string {
-    const minutes = Math.floor(secondsTotal / 60);
-    const seconds = secondsTotal % 60;
-    const mm = minutes.toString();
-    const ss = seconds.toString().padStart(2, '0');
-    return `${mm}:${ss}`;
-  }
+    const bookId = this.props.bookId ?? 0;
+    const chapter = this.props.chapter ?? 0;
 
-  private allAnswered(): boolean {
-    const { riddles, selections } = this.state;
-    if (riddles.length === 0) return false;
-    return riddles.every((_, index) => (selections[index] ?? []).length > 0);
+    const res = await this.props.apiClient.startAnagramGame(bookId, chapter);
+
+    const gameId = res[0]?.gameId ?? null;
+    const riddles = res.map((x) => x.riddle);
+
+    this.setState({
+      loading: false,
+      riddles,
+      anagramGameId: gameId,
+      selectedPerPuzzle: riddles.map(() => []),
+    });
   }
 
   handleToggleWord(wordId: string): void {
-    this.setState((prev) => {
-      const idx = prev.currentIndex;
-      const current = prev.selections[idx] ?? [];
-      const exists = current.includes(wordId);
-      const next = exists ? current.filter((id) => id !== wordId) : [...current, wordId];
+    const idx = this.state.currentIndex;
 
-      return {
-        ...prev,
-        selections: {
-          ...prev.selections,
-          [idx]: next,
-        },
-        feedbackKey: null,
-      };
+    this.setState((prev) => {
+      const next = [...prev.selectedPerPuzzle];
+      const current = new Set(next[idx] ?? []);
+
+      if (current.has(wordId)) current.delete(wordId);
+      else current.add(wordId);
+
+      next[idx] = Array.from(current);
+      return { ...prev, selectedPerPuzzle: next };
     });
   }
 
-  handleNext(): void {
-    this.setState((prev) => {
-      const { currentIndex, riddles, selections } = prev;
-      if (currentIndex >= riddles.length - 1) return prev;
+  goPrev(): void {
+    this.setState((prev) => ({ ...prev, currentIndex: Math.max(0, prev.currentIndex - 1) }));
+  }
 
-      const selected = selections[currentIndex] ?? [];
-      if (selected.length === 0) {
-        return { ...prev, feedbackKey: 'needSelection' };
+  goNext(): void {
+    this.setState((prev) => ({ ...prev, currentIndex: Math.min(prev.riddles.length - 1, prev.currentIndex + 1) }));
+  }
+
+  async finishInternal(): Promise<void> {
+    const { riddles, selectedPerPuzzle, totalSeconds, anagramGameId } = this.state;
+    if (riddles.length === 0) return;
+
+    if (!anagramGameId) {
+      console.error('Brak anagramGameId — nie mogę wysłać submit.');
+      return;
+    }
+
+    const selectedWordIds = selectedPerPuzzle.flatMap((arr) => arr);
+
+    const payload: AnagramAnswerRequest = {
+      type: 'anagram',
+      gameId: anagramGameId,
+      selectedWordIds,
+      elapsedTimeMs: totalSeconds * 1000,
+    };
+
+    const response = await this.props.apiClient.submitAnagramAnswers(payload);
+
+    const bookId = this.props.bookId ?? 0;
+    const chapter = this.props.chapter ?? 0;
+
+    const resultsBody: ResultsCreateRequest = {
+      book_id: bookId,
+      extract_no: chapter,
+      puzzle_type: this.props.type,
+      score: response?.score ?? 0,
+      duration_sec: Math.round(totalSeconds),
+      played_at: new Date().toISOString(),
+      accuracy: response?.accuracy ?? 0,
+      pagesCompleted: response?.pagesCompleted ?? 0,
+      mistakes: response?.mistakes ?? 0,
+    };
+
+    const sessionId = localStorage.getItem('session_id');
+    if (sessionId) {
+      try {
+        await this.props.apiClient.createResults(resultsBody, sessionId);
+      } catch (e) {
+        console.error('Failed to POST /results:', e);
       }
+    }
 
-      return {
-        ...prev,
-        currentIndex: currentIndex + 1,
-        feedbackKey: null,
-      };
-    });
-  }
-
-  handlePrev(): void {
-    this.setState((prev) => {
-      if (prev.currentIndex === 0) return prev;
-      return {
-        ...prev,
-        currentIndex: prev.currentIndex - 1,
-        feedbackKey: null,
-      };
-    });
-  }
-
-  handlePause(): void {
-    this.setState({
-      isPaused: true,
-      showPauseModal: true,
-    });
-  }
-
-  handleResume(): void {
-    this.setState({
-      isPaused: false,
-      showPauseModal: false,
-    });
+    const results = mapSubmitToGameResults(response, riddles.length);
+    this.props.onFinishLevel(results);
   }
 
   handleFinishClick(): void {
-    if (!this.allAnswered()) {
-      this.setState({ showFinishConfirm: true });
-      return;
-    }
-    this.finishInternal();
-  }
-  finishInternal(): void {
-    const { riddles, selections, totalSeconds } = this.state;
-    const { onFinishLevel } = this.props;
-
-    if (riddles.length === 0) {
-      const empty: GameResults = {
-        score: 0,
-        accuracy: 0,
-        totalMistakes: 0,
-        totalPuzzles: 0,
-        completedPuzzles: 0,
-        timeSeconds: 0,
-      };
-      onFinishLevel(empty);
-      return;
-    }
-
-    const totalPuzzles = riddles.length;
-
-    const completedPuzzles = riddles.reduce((acc, _r, index) => {
-      const sel = selections[index] ?? [];
-      return acc + (sel.length > 0 ? 1 : 0);
-    }, 0);
-
-    const correctPerPuzzle = CORRECT_ANAGRAM_IDS_PER_PUZZLE.length;
-    const totalPossibleCorrect = correctPerPuzzle * totalPuzzles;
-
-    let correct = 0;
-    let mistakes = 0;
-
-    riddles.forEach((_riddle, index) => {
-      const sel = selections[index] ?? [];
-
-      sel.forEach((id) => {
-        if (CORRECT_ANAGRAM_IDS_PER_PUZZLE.includes(id)) {
-          correct += 1;
-        } else {
-          mistakes += 1;
-        }
-      });
-    });
-
-    const accuracy = totalPossibleCorrect === 0 ? 0 : correct / totalPossibleCorrect;
-
-    const score = Math.round(accuracy * 100);
-
-    const results: GameResults = {
-      score,
-      accuracy,
-      totalMistakes: mistakes,
-      totalPuzzles,
-      completedPuzzles,
-      timeSeconds: totalSeconds,
-    };
-
-    onFinishLevel(results);
+    void this.finishInternal();
   }
 
-  render(): React.ReactNode {
-    const { loading, riddles, currentIndex, selections, totalSeconds, showPauseModal, showFinishConfirm, feedbackKey } =
+  handlePause(): void {
+    this.setState({ isPaused: true, showPauseModal: true });
+  }
+
+  handleResume(): void {
+    this.setState({ isPaused: false, showPauseModal: false });
+  }
+
+  render() {
+    const { loading, riddles, currentIndex, totalSeconds, selectedPerPuzzle, showPauseModal, showFinishConfirm } =
       this.state;
-    const { language, onBackToHome } = this.props;
 
-    const t = translations[language];
+    const t = translations[this.props.language];
 
-    if (loading && riddles.length === 0) {
+    if (loading || riddles.length === 0) {
       return (
         <Box>
-          <Button
-            size="sm"
-            mb={4}
-            variant="ghost"
-            onClick={onBackToHome}
-          >
-            ← {t.back}
-          </Button>
           <Spinner />
         </Box>
       );
     }
 
-    if (!loading && riddles.length === 0) {
-      return (
-        <Box>
-          <Button
-            size="sm"
-            mb={4}
-            variant="ghost"
-            onClick={onBackToHome}
-          >
-            ← {t.back}
-          </Button>
-          <Text mt={4}>{t.anagramNoDataLabel}</Text>
-        </Box>
-      );
-    }
-
     const riddle = riddles[currentIndex];
-    const total = riddles.length;
-    const timeLabel = this.formatTime(totalSeconds);
-    const selectedIds = selections[currentIndex] ?? [];
+    const selectedWordIds = selectedPerPuzzle[currentIndex] ?? [];
 
-    const feedbackText = feedbackKey === 'needSelection' ? t.anagramNeedSelectionLabel : null;
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const timeLabel = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
     return (
       <Box
@@ -303,7 +234,7 @@ export class AnagramView extends React.Component<Props, State> {
             align="center"
           >
             <Heading size="sm">
-              {t.puzzleOfLabel} {currentIndex + 1}/{total}
+              {t.puzzleOfLabel} {currentIndex + 1}/{riddles.length}
             </Heading>
             <Text fontSize="sm">
               {t.timeLeftLabel}: <strong>{timeLabel}</strong>
@@ -314,31 +245,14 @@ export class AnagramView extends React.Component<Props, State> {
             size="md"
             mt={2}
           >
-            {t.anagramHeading}
+            {t.puzzleHeading}
           </Heading>
-          <Text
-            fontSize="sm"
-            color="gray.600"
-          >
-            {t.anagramInstructions}
-          </Text>
 
           <AnagramGame
             riddle={riddle}
-            selectedWordIds={selectedIds}
+            selectedWordIds={selectedWordIds}
             onToggleWord={this.handleToggleWord}
           />
-
-          {feedbackText && (
-            <Box
-              borderWidth="1px"
-              borderRadius="md"
-              p={3}
-              bg="red.50"
-            >
-              <Text>{feedbackText}</Text>
-            </Box>
-          )}
 
           <Flex
             justify="space-between"
@@ -347,7 +261,7 @@ export class AnagramView extends React.Component<Props, State> {
             <Button
               size="sm"
               variant="outline"
-              onClick={this.handlePrev}
+              onClick={this.goPrev}
               disabled={currentIndex === 0}
             >
               ← {t.prevPuzzleLabel}
@@ -355,8 +269,8 @@ export class AnagramView extends React.Component<Props, State> {
             <Button
               size="sm"
               variant="outline"
-              onClick={this.handleNext}
-              disabled={currentIndex === total - 1}
+              onClick={this.goNext}
+              disabled={currentIndex === riddles.length - 1}
             >
               {t.nextPuzzleLabel} →
             </Button>
@@ -371,14 +285,13 @@ export class AnagramView extends React.Component<Props, State> {
           </Button>
         </Stack>
 
-        {/* Modal pauzy */}
         {showPauseModal && (
           <Box
             position="fixed"
             inset={0}
             bg="blackAlpha.500"
             backdropFilter="blur(4px)"
-            zIndex={1500}
+            zIndex={1400}
           >
             <Flex
               h="100%"
@@ -397,7 +310,7 @@ export class AnagramView extends React.Component<Props, State> {
                   position="absolute"
                   right={3}
                   top={3}
-                  onClick={this.handleResume}
+                  onClick={() => this.handleResume()}
                 />
                 <Heading
                   size="md"
@@ -405,9 +318,14 @@ export class AnagramView extends React.Component<Props, State> {
                 >
                   {t.pauseLabel}
                 </Heading>
-                <Text mb={6}>{t.anagramPauseMessage}</Text>
+                <Text mb={6}>
+                  {this.props.language === 'pl'
+                    ? 'Gra jest wstrzymana. Możesz w każdej chwili wznowić.'
+                    : 'The game is paused. You can resume at any time.'}
+                </Text>
                 <Button
-                  onClick={this.handleResume}
+                  backgroundColor="#1e3932"
+                  onClick={() => this.handleResume()}
                 >
                   {t.resumeLabel}
                 </Button>
@@ -422,7 +340,7 @@ export class AnagramView extends React.Component<Props, State> {
             inset={0}
             bg="blackAlpha.500"
             backdropFilter="blur(4px)"
-            zIndex={1500}
+            zIndex={1400}
           >
             <Flex
               h="100%"
@@ -450,24 +368,6 @@ export class AnagramView extends React.Component<Props, State> {
                   {t.finishEarlyTitle}
                 </Heading>
                 <Text mb={6}>{t.finishEarlyMessage}</Text>
-                <Flex
-                  justify="flex-end"
-                  gap={3}
-                >
-                  <Button
-                    variant="outline"
-                    onClick={() => this.setState({ showFinishConfirm: false })}
-                  >
-                    {t.finishEarlyCancel}
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      this.setState({ showFinishConfirm: false }, () => this.finishInternal());
-                    }}
-                  >
-                    {t.finishEarlyConfirm}
-                  </Button>
-                </Flex>
               </Box>
             </Flex>
           </Box>

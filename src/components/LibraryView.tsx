@@ -36,12 +36,6 @@ export class LibraryView extends React.Component<Props, State> {
 
   async showBooks(): Promise<void> {
     this.setState({ loading: true });
-    // const books = await this.props.apiClient.getBooks();
-
-    // if (books.length > 0) {
-    //   const extracts = await this.props.apiClient.getExtracts(books[0].id);
-    //   this.setState({ extracts });
-    // }
   }
 
   search(q: string): void {

@@ -1,36 +1,56 @@
 import React from 'react';
 import { Box, Button, CloseButton, Flex, Heading, Spinner, Stack, Text } from '@chakra-ui/react';
 import type { ApiClient } from '../api/ApiClient';
-import type { ChoiceRiddle } from '../api/modelV2';
+import type { ChoiceRiddle, ChoiceAnswerRequest, ResultsCreateRequest } from '../api/modelV2';
 import type { Language } from '../i18n';
 import { translations } from '../i18n';
 import type { GameResults } from '../gameTypes';
+import { mapSubmitToGameResults } from '../shared/utils/mappers.utils';
 import { ChoiceGame } from './puzzles/ChoiceGame';
 
 type Props = {
   apiClient: ApiClient;
   extractId: number;
-  type: string; // "choice"
+  type: string;
   language: Language;
+
+  bookId?: number;
+  chapter?: number;
+
   onBackToHome(): void;
   onFinishLevel(results: GameResults): void;
 };
-
-type FeedbackKey = 'needSelection' | null;
 
 type State = {
   loading: boolean;
   riddles: ChoiceRiddle[];
   currentIndex: number;
-  // pageIndex -> { gapId -> optionId }
-  selections: Record<number, Record<string, string>>;
+
+  selectedPerPuzzle: Array<Record<string, string | null>>;
+  activeGapPerPuzzle: Array<string | null>;
+
   totalSeconds: number;
+
   isPaused: boolean;
   showPauseModal: boolean;
   showFinishConfirm: boolean;
-  feedbackKey: FeedbackKey;
-  activeGapId: string | null;
+
+  choiceGameId: number | null;
 };
+
+function initSelectedMap(riddle: ChoiceRiddle): Record<string, string | null> {
+  const m: Record<string, string | null> = {};
+  riddle.gaps.forEach((g) => (m[g.id] = null));
+  return m;
+}
+
+function firstGapId(riddle: ChoiceRiddle): string | null {
+  return riddle.gaps[0]?.id ?? null;
+}
+
+function isComplete(riddle: ChoiceRiddle, selected: Record<string, string | null>): boolean {
+  return riddle.gaps.every((g) => selected[g.id] != null);
+}
 
 export class ChoiceView extends React.Component<Props, State> {
   private timerId: number | null = null;
@@ -39,31 +59,31 @@ export class ChoiceView extends React.Component<Props, State> {
     super(props);
 
     this.state = {
-      loading: true,
+      loading: false,
       riddles: [],
       currentIndex: 0,
-      selections: {},
+      selectedPerPuzzle: [],
+      activeGapPerPuzzle: [],
       totalSeconds: 0,
       isPaused: false,
       showPauseModal: false,
       showFinishConfirm: false,
-      feedbackKey: null,
-      activeGapId: null,
+      choiceGameId: null,
     };
 
-    this.loadData = this.loadData.bind(this);
+    this.startGame = this.startGame.bind(this);
+    this.goPrev = this.goPrev.bind(this);
+    this.goNext = this.goNext.bind(this);
     this.handleGapClick = this.handleGapClick.bind(this);
-    this.handleOptionSelect = this.handleOptionSelect.bind(this);
-    this.handleNext = this.handleNext.bind(this);
-    this.handlePrev = this.handlePrev.bind(this);
+    this.handleSelectOption = this.handleSelectOption.bind(this);
+    this.finishInternal = this.finishInternal.bind(this);
+    this.handleFinishClick = this.handleFinishClick.bind(this);
     this.handlePause = this.handlePause.bind(this);
     this.handleResume = this.handleResume.bind(this);
-    this.handleFinishClick = this.handleFinishClick.bind(this);
-    this.finishInternal = this.finishInternal.bind(this);
   }
 
   componentDidMount(): void {
-    void this.loadData();
+    void this.startGame();
 
     this.timerId = window.setInterval(() => {
       this.setState((prev) => {
@@ -74,256 +94,194 @@ export class ChoiceView extends React.Component<Props, State> {
   }
 
   componentWillUnmount(): void {
-    if (this.timerId !== null) {
-      window.clearInterval(this.timerId);
-    }
+    if (this.timerId !== null) window.clearInterval(this.timerId);
   }
 
-  async loadData(): Promise<void> {
-    this.setState({ loading: true });
-    const riddles = await this.props.apiClient.getChoiceRiddles(this.props.extractId);
+  async startGame(): Promise<void> {
     this.setState({
-      riddles,
-      loading: false,
+      loading: true,
+      isPaused: false,
+      showPauseModal: false,
+      showFinishConfirm: false,
       currentIndex: 0,
-      selections: {},
-      feedbackKey: null,
-      activeGapId: null,
+      totalSeconds: 0,
     });
-  }
 
-  private formatTime(secondsTotal: number): string {
-    const minutes = Math.floor(secondsTotal / 60);
-    const seconds = secondsTotal % 60;
-    const mm = minutes.toString();
-    const ss = seconds.toString().padStart(2, '0');
-    return `${mm}:${ss}`;
-  }
+    const bookId = this.props.bookId ?? 0;
+    const chapter = this.props.chapter ?? 0;
 
-  private pageSelections(index: number): Record<string, string> {
-    return this.state.selections[index] ?? {};
-  }
+    const res = await this.props.apiClient.startChoiceGame(bookId, chapter);
 
-  private pageCompleted(index: number): boolean {
-    const riddle = this.state.riddles[index];
-    const sel = this.pageSelections(index);
-    return riddle.gaps.every((g) => !!sel[g.id]);
-  }
+    const gameId = res[0]?.gameId ?? null;
+    const riddles = res.map((x) => x.riddle);
 
-  private allPagesCompleted(): boolean {
-    const { riddles } = this.state;
-    if (riddles.length === 0) return false;
-    return riddles.every((_r, i) => this.pageCompleted(i));
+    this.setState({
+      loading: false,
+      riddles,
+      choiceGameId: gameId,
+      selectedPerPuzzle: riddles.map(initSelectedMap),
+      activeGapPerPuzzle: riddles.map(firstGapId),
+    });
   }
 
   handleGapClick(gapId: string): void {
-    this.setState((prev) => ({
-      ...prev,
-      activeGapId: prev.activeGapId === gapId ? null : gapId,
-      feedbackKey: null,
-    }));
-  }
-
-  handleOptionSelect(gapId: string, optionId: string): void {
+    const idx = this.state.currentIndex;
     this.setState((prev) => {
-      const idx = prev.currentIndex;
-      const prevForPage = prev.selections[idx] ?? {};
-      return {
-        ...prev,
-        selections: {
-          ...prev.selections,
-          [idx]: {
-            ...prevForPage,
-            [gapId]: optionId,
-          },
-        },
-        activeGapId: null,
-        feedbackKey: null,
-      };
+      const next = [...prev.activeGapPerPuzzle];
+      next[idx] = gapId;
+      return { ...prev, activeGapPerPuzzle: next };
     });
   }
 
-  handleNext(): void {
-    this.setState((prev) => {
-      const { currentIndex, riddles } = prev;
-      if (currentIndex >= riddles.length - 1) return prev;
+  handleSelectOption(gapId: string, optionId: string): void {
+    const idx = this.state.currentIndex;
 
-      if (!this.pageCompleted(currentIndex)) {
-        return { ...prev, feedbackKey: 'needSelection' };
+    this.setState((prev) => {
+      const nextSelected = [...prev.selectedPerPuzzle];
+      nextSelected[idx] = {
+        ...(nextSelected[idx] ?? {}),
+        [gapId]: optionId,
+      };
+
+      const riddle = prev.riddles[idx];
+      const currentMap = nextSelected[idx];
+      const nextGap = riddle.gaps.find((g) => currentMap[g.id] == null)?.id ?? null;
+
+      const nextActive = [...prev.activeGapPerPuzzle];
+      nextActive[idx] = nextGap;
+
+      return { ...prev, selectedPerPuzzle: nextSelected, activeGapPerPuzzle: nextActive };
+    });
+  }
+
+  goPrev(): void {
+    this.setState((prev) => ({ ...prev, currentIndex: Math.max(0, prev.currentIndex - 1) }));
+  }
+
+  goNext(): void {
+    this.setState((prev) => {
+      const riddle = prev.riddles[prev.currentIndex];
+      const selected = prev.selectedPerPuzzle[prev.currentIndex];
+
+      if (!isComplete(riddle, selected)) {
+        return { ...prev, showFinishConfirm: false };
       }
 
-      return {
-        ...prev,
-        currentIndex: currentIndex + 1,
-        activeGapId: null,
-        feedbackKey: null,
-      };
+      return { ...prev, currentIndex: Math.min(prev.riddles.length - 1, prev.currentIndex + 1) };
     });
   }
 
-  handlePrev(): void {
-    this.setState((prev) => {
-      if (prev.currentIndex === 0) return prev;
-      return {
-        ...prev,
-        currentIndex: prev.currentIndex - 1,
-        activeGapId: null,
-        feedbackKey: null,
-      };
-    });
-  }
+  async finishInternal(): Promise<void> {
+    const { riddles, selectedPerPuzzle, totalSeconds, choiceGameId } = this.state;
+    if (riddles.length === 0) return;
 
-  handlePause(): void {
-    this.setState({
-      isPaused: true,
-      showPauseModal: true,
-    });
-  }
+    if (!choiceGameId) {
+      console.error('Brak choiceGameId — nie mogę wysłać submit.');
+      return;
+    }
 
-  handleResume(): void {
-    this.setState({
-      isPaused: false,
-      showPauseModal: false,
-    });
+    const answers = selectedPerPuzzle.flatMap((m) =>
+      Object.entries(m)
+        .filter(([, optionId]) => optionId != null)
+        .map(([gapId, optionId]) => ({ gapId, optionId: String(optionId) })),
+    );
+
+    const payload: ChoiceAnswerRequest = {
+      type: 'choice',
+      gameId: choiceGameId,
+      answers,
+      elapsedTimeMs: totalSeconds * 1000,
+    };
+
+    const response = await this.props.apiClient.submitChoiceAnswers(payload);
+
+    const bookId = this.props.bookId ?? 0;
+    const chapter = this.props.chapter ?? 0;
+
+    const resultsBody: ResultsCreateRequest = {
+      book_id: bookId,
+      extract_no: chapter,
+      puzzle_type: this.props.type,
+      score: response?.score ?? 0,
+      duration_sec: Math.round(totalSeconds),
+      played_at: new Date().toISOString(),
+      accuracy: response?.accuracy ?? 0,
+      pagesCompleted: response?.pagesCompleted ?? 0,
+      mistakes: response?.mistakes ?? 0,
+    };
+
+    const sessionId = localStorage.getItem('session_id');
+    if (sessionId) {
+      try {
+        await this.props.apiClient.createResults(resultsBody, sessionId);
+      } catch (e) {
+        console.error('Failed to POST /results:', e);
+      }
+    }
+
+    const results = mapSubmitToGameResults(response, riddles.length);
+    this.props.onFinishLevel(results);
   }
 
   handleFinishClick(): void {
-    if (!this.allPagesCompleted()) {
-      this.setState({ showFinishConfirm: true });
-      return;
-    }
-    this.finishInternal();
+    const allComplete = this.state.riddles.every((r, i) => isComplete(r, this.state.selectedPerPuzzle[i]));
+    if (allComplete) void this.finishInternal();
+    else this.setState({ showFinishConfirm: true });
   }
 
-  finishInternal(): void {
-    const { riddles, selections, totalSeconds } = this.state;
-    const { onFinishLevel } = this.props;
-
-    if (riddles.length === 0) {
-      const empty: GameResults = {
-        score: 0,
-        accuracy: 0,
-        totalMistakes: 0,
-        totalPuzzles: 0,
-        completedPuzzles: 0,
-        timeSeconds: 0,
-      };
-      onFinishLevel(empty);
-      return;
-    }
-
-    const totalPuzzles = riddles.length;
-
-    let correct = 0;
-    let mistakes = 0;
-    let completedPuzzles = 0;
-    let totalGaps = 0;
-
-    riddles.forEach((riddle, index) => {
-      const sel = selections[index] ?? {};
-      const pageHasAnySelection = Object.keys(sel).length > 0;
-      if (pageHasAnySelection) {
-        completedPuzzles += 1;
-      }
-
-      riddle.gaps.forEach((gap) => {
-        totalGaps += 1;
-        const selectedOptionId = sel[gap.id];
-        if (!selectedOptionId) {
-          // brak wyboru – wpływa tylko na accuracy
-          return;
-        }
-        if (selectedOptionId === gap.correctOptionId) {
-          correct += 1;
-        } else {
-          mistakes += 1;
-        }
-      });
-    });
-
-    const accuracy = totalGaps === 0 ? 0 : correct / totalGaps;
-    const score = Math.round(accuracy * 100);
-
-    const results: GameResults = {
-      score,
-      accuracy,
-      totalMistakes: mistakes,
-      totalPuzzles,
-      completedPuzzles,
-      timeSeconds: totalSeconds,
-    };
-
-    onFinishLevel(results);
+  handlePause(): void {
+    this.setState({ isPaused: true, showPauseModal: true });
   }
 
-  render(): React.ReactNode {
+  handleResume(): void {
+    this.setState({ isPaused: false, showPauseModal: false });
+  }
+
+  render() {
     const {
       loading,
       riddles,
       currentIndex,
       totalSeconds,
+      selectedPerPuzzle,
+      activeGapPerPuzzle,
       showPauseModal,
       showFinishConfirm,
-      feedbackKey,
-      activeGapId,
     } = this.state;
-    const { language, onBackToHome } = this.props;
 
-    const t = translations[language];
+    const t = translations[this.props.language];
 
-    if (loading && riddles.length === 0) {
+    if (loading || riddles.length === 0) {
       return (
         <Box>
-          <Button
-            size="sm"
-            mb={4}
-            variant="ghost"
-            onClick={onBackToHome}
-          >
-            ← {t.back}
-          </Button>
           <Spinner />
         </Box>
       );
     }
 
-    if (!loading && riddles.length === 0) {
-      return (
-        <Box>
-          <Button
-            size="sm"
-            mb={4}
-            variant="ghost"
-            onClick={onBackToHome}
-          >
-            ← {t.back}
-          </Button>
-          <Text mt={4}>{t.choiceNoDataLabel}</Text>
-        </Box>
-      );
-    }
-
     const riddle = riddles[currentIndex];
-    const total = riddles.length;
-    const timeLabel = this.formatTime(totalSeconds);
-    const selectionsForPage = this.pageSelections(currentIndex);
+    const selectedMap = selectedPerPuzzle[currentIndex] ?? {};
+    const activeGapId = activeGapPerPuzzle[currentIndex] ?? null;
 
-    const feedbackText = feedbackKey === 'needSelection' ? t.choiceNeedSelectionLabel : null;
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const timeLabel = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+    const optionsTitle = this.props.language === 'pl' ? 'Wybierz opcję' : 'Choose an option';
+    const optionsHint =
+      this.props.language === 'pl' ? 'Kliknij lukę, aby zobaczyć opcje.' : 'Click a gap to see options.';
 
     return (
-      <Box position="relative">
+      <Box
+        position="relative"
+        maxW="5xl"
+        mx="auto"
+      >
         <Stack>
           <Flex
-            justify="space-between"
+            justify="right"
             align="center"
           >
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={onBackToHome}
-            >
-              ← {t.back}
-            </Button>
             <Button
               size="sm"
               variant="outline"
@@ -338,7 +296,7 @@ export class ChoiceView extends React.Component<Props, State> {
             align="center"
           >
             <Heading size="sm">
-              {t.puzzleOfLabel} {currentIndex + 1}/{total}
+              {t.puzzleOfLabel} {currentIndex + 1}/{riddles.length}
             </Heading>
             <Text fontSize="sm">
               {t.timeLeftLabel}: <strong>{timeLabel}</strong>
@@ -349,34 +307,18 @@ export class ChoiceView extends React.Component<Props, State> {
             size="md"
             mt={2}
           >
-            {t.choiceHeading}
+            {t.puzzleHeading}
           </Heading>
-          <Text
-            fontSize="sm"
-            color="gray.600"
-          >
-            {t.choiceInstructions}
-          </Text>
 
           <ChoiceGame
             riddle={riddle}
-            selectedOptionsByGap={selectionsForPage}
+            selectedOptionsByGap={selectedMap}
             activeGapId={activeGapId}
             onGapClick={this.handleGapClick}
-            onSelectOption={this.handleOptionSelect}
-            optionsTitle={t.choiceOptionsTitle}
-            optionsHint={t.choiceOptionsHint}
+            onSelectOption={this.handleSelectOption}
+            optionsTitle={optionsTitle}
+            optionsHint={optionsHint}
           />
-          {feedbackText && (
-            <Box
-              borderWidth="1px"
-              borderRadius="md"
-              p={3}
-              bg="red.50"
-            >
-              <Text>{feedbackText}</Text>
-            </Box>
-          )}
 
           <Flex
             justify="space-between"
@@ -385,7 +327,7 @@ export class ChoiceView extends React.Component<Props, State> {
             <Button
               size="sm"
               variant="outline"
-              onClick={this.handlePrev}
+              onClick={this.goPrev}
               disabled={currentIndex === 0}
             >
               ← {t.prevPuzzleLabel}
@@ -393,8 +335,8 @@ export class ChoiceView extends React.Component<Props, State> {
             <Button
               size="sm"
               variant="outline"
-              onClick={this.handleNext}
-              disabled={currentIndex === total - 1}
+              onClick={this.goNext}
+              disabled={currentIndex === riddles.length - 1}
             >
               {t.nextPuzzleLabel} →
             </Button>
@@ -402,8 +344,8 @@ export class ChoiceView extends React.Component<Props, State> {
 
           <Button
             mt={4}
-            backgroundColor="#1e3932"
             onClick={this.handleFinishClick}
+            backgroundColor="#1e3932"
           >
             {t.finishButtonLabel}
           </Button>
@@ -415,7 +357,7 @@ export class ChoiceView extends React.Component<Props, State> {
             inset={0}
             bg="blackAlpha.500"
             backdropFilter="blur(4px)"
-            zIndex={1500}
+            zIndex={1400}
           >
             <Flex
               h="100%"
@@ -434,7 +376,7 @@ export class ChoiceView extends React.Component<Props, State> {
                   position="absolute"
                   right={3}
                   top={3}
-                  onClick={this.handleResume}
+                  onClick={() => this.handleResume()}
                 />
                 <Heading
                   size="md"
@@ -442,10 +384,14 @@ export class ChoiceView extends React.Component<Props, State> {
                 >
                   {t.pauseLabel}
                 </Heading>
-                <Text mb={6}>{t.choicePauseMessage}</Text>
+                <Text mb={6}>
+                  {this.props.language === 'pl'
+                    ? 'Gra jest wstrzymana. Możesz w każdej chwili wznowić.'
+                    : 'The game is paused. You can resume at any time.'}
+                </Text>
                 <Button
                   backgroundColor="#1e3932"
-                  onClick={this.handleResume}
+                  onClick={() => this.handleResume()}
                 >
                   {t.resumeLabel}
                 </Button>
@@ -460,7 +406,7 @@ export class ChoiceView extends React.Component<Props, State> {
             inset={0}
             bg="blackAlpha.500"
             backdropFilter="blur(4px)"
-            zIndex={1500}
+            zIndex={1400}
           >
             <Flex
               h="100%"
@@ -500,9 +446,7 @@ export class ChoiceView extends React.Component<Props, State> {
                   </Button>
                   <Button
                     backgroundColor="#1e3932"
-                    onClick={() => {
-                      this.setState({ showFinishConfirm: false }, () => this.finishInternal());
-                    }}
+                    onClick={() => this.finishInternal()}
                   >
                     {t.finishEarlyConfirm}
                   </Button>
