@@ -28,7 +28,7 @@ import type {
   SwitchAnswerRequest,
   ResultsCreateRequest,
   ResultsSummaryResponse,
-  GameAnswerResponse
+  GameAnswerResponse,
 } from './modelV2';
 
 import {
@@ -110,17 +110,6 @@ const MOCK_BOOKS: Book[] = [
     completedChapters: 0,
   },
 ];
-
-const MOCK_EXTRACTS_BY_BOOK: Record<number, Extract[]> = {
-  1: [{ id: 101, orderNo: 1, title: 'Inwokacja' }],
-  2: [{ id: 201, orderNo: 1, title: 'Rozdział 1' }],
-  3: [{ id: 301, orderNo: 1, title: 'Fragment 1' }],
-  4: [{ id: 401, orderNo: 1, title: 'Fragment 1' }],
-  5: [{ id: 501, orderNo: 1, title: 'Scena 1' }],
-  6: [{ id: 601, orderNo: 1, title: 'Fragment 1' }],
-  7: [{ id: 701, orderNo: 1, title: 'Fragment 1' }],
-  8: [{ id: 801, orderNo: 1, title: 'Fragment 1' }],
-};
 
 const GAMES: Game[] = [
   {
@@ -242,31 +231,67 @@ export class ApiClient {
   private readonly gameServiceBaseUrl =
     'https://polish-literature-based-language-game-574160223694.europe-west1.run.app';
 
+  private booksCache: Book[] | null = null;
+
+  private getSessionIdFromStorage(): string | null {
+    try {
+      return localStorage.getItem('session_id');
+    } catch {
+      return null;
+    }
+  }
+
   async getGames(): Promise<Game[]> {
     return Promise.resolve(GAMES);
   }
 
-  async getBooks(): Promise<Book[]> {
+  async getBooks(sessionId: string): Promise<Book[]> {
     if (this.baseUrl) {
       try {
         const res = await fetch(`${this.baseUrl}/books`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-Session-Id': sessionId },
         });
-        if (!res.ok) return MOCK_BOOKS;
-        return (await res.json()) as Book[];
+        if (!res.ok) {
+          this.booksCache = MOCK_BOOKS;
+          return MOCK_BOOKS;
+        }
+
+        const data = (await res.json()) as Book[];
+        this.booksCache = data; // ✅ zapamiętaj
+        return data;
       } catch {
+        this.booksCache = MOCK_BOOKS;
         return MOCK_BOOKS;
       }
     }
+
+    this.booksCache = MOCK_BOOKS;
     return Promise.resolve(MOCK_BOOKS);
   }
 
   async getExtracts(bookId: number): Promise<Extract[]> {
-    return Promise.resolve(MOCK_EXTRACTS_BY_BOOK[bookId] ?? []);
+    let book = this.booksCache?.find((b) => b.id === bookId) ?? null;
+
+    if (!book) {
+      const sessionId = this.getSessionIdFromStorage();
+      if (sessionId) {
+        const books = await this.getBooks(sessionId);
+        book = books.find((b) => b.id === bookId) ?? null;
+      }
+    }
+
+    const chapters = book?.chapters ?? 0;
+
+    return Array.from({ length: chapters }, (_, i) => ({
+      id: i + 1,
+      orderNo: i + 1,
+      title: `Chapter ${i + 1}`,
+    }));
   }
 
   async createLevel(_extractId: number, type: string): Promise<Level> {
+    // (pozostawione — nadal używane tylko w starych ścieżkach)
     return Promise.resolve({ levelId: 1, type });
   }
 
@@ -496,10 +521,10 @@ export class ApiClient {
   }
 
   async getResultsSummary(bookId: number, sessionId: string): Promise<ResultsSummaryResponse> {
-    const res = await fetch(
-      `${this.baseUrl}/results/summary?book_id=${encodeURIComponent(String(bookId))}`,
-      { method: 'GET', headers: { 'Content-Type': 'application/json', 'X-Session-Id': sessionId } },
-    );
+    const res = await fetch(`${this.baseUrl}/results/summary?book_id=${encodeURIComponent(String(bookId))}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Id': sessionId },
+    });
 
     if (!res.ok) {
       const text = await res.text().catch(() => '');

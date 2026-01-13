@@ -14,7 +14,7 @@ import { ProgressView } from './components/ProgressView.tsx';
 import { SpellcheckView } from './components/SpellcheckView.tsx';
 import { PuzzleView } from './components/PuzzleView.tsx';
 import { ResultsScreen } from './components/ResultsScreen.tsx';
-import { GameCode, type Riddle } from './api/types.ts';
+import { GameCode, type Riddle, type Extract } from './api/types.ts';
 import { CrossoutView } from './components/CrossoutView.tsx';
 import { AnagramView } from './components/AnagramView.tsx';
 import { SwitchView } from './components/SwitchView.tsx';
@@ -38,6 +38,9 @@ type AppState = {
   booksLoading: boolean;
   progress: BookProgress[];
   showInterruptGameModal: boolean;
+
+  selectedBookExtracts: Extract[];
+  selectedBookTotalChapters: number | null;
 
   showNickModal: boolean;
   nickInput: string;
@@ -72,6 +75,9 @@ export class App extends React.Component<unknown, AppState> {
       booksLoading: true,
       progress: [],
       showInterruptGameModal: false,
+
+      selectedBookExtracts: [],
+      selectedBookTotalChapters: null,
 
       showNickModal: false,
       nickInput: '',
@@ -129,8 +135,25 @@ export class App extends React.Component<unknown, AppState> {
   }
 
   async loadBooksAndProgress(): Promise<void> {
-    this.setState({ booksLoading: true });
-    this.setState({ booksLoading: false });
+    try {
+      const sessionId = localStorage.getItem('session_id');
+      if (!sessionId) {
+        this.setState({ books: [], booksLoading: false });
+        return;
+      }
+
+      this.setState({ booksLoading: true });
+
+      const books = await this.apiClient.getBooks(sessionId);
+
+      this.setState({
+        books,
+        booksLoading: false,
+      });
+    } catch (e) {
+      console.error('loadBooksAndProgress failed', e);
+      this.setState({ books: [], booksLoading: false });
+    }
   }
 
   getRandomGameType(): GameType {
@@ -146,8 +169,11 @@ export class App extends React.Component<unknown, AppState> {
     this.setState({ route: 'selectGame' });
   }
 
+  // ✅ refresh books przy przejściu do listy książek
   handleChooseBookClick(): void {
-    this.setState({ route: 'selectBook' });
+    this.setState({ route: 'selectBook' }, () => {
+      void this.loadBooksAndProgress();
+    });
   }
 
   handleGameSelected(gameId: number | 'random', type: GameType | 'random', code: GameCode | null): void {
@@ -172,13 +198,20 @@ export class App extends React.Component<unknown, AppState> {
       {
         selectedBookId: bookId,
         currentChapterIndex: chapterIndex,
+        selectedBookExtracts: [],
+        selectedBookTotalChapters: null,
       },
       this.afterSelection,
     );
   }
 
+  private clampChapterIndex(index: number, total: number): number {
+    if (total <= 0) return 0;
+    return Math.max(0, Math.min(index, total - 1));
+  }
+
   async afterSelection(): Promise<void> {
-    const { selectedGameType, selectedBookId, selectedGameCode } = this.state;
+    const { selectedGameType, selectedBookId, selectedGameCode, currentChapterIndex } = this.state;
 
     if (selectedGameType && selectedBookId !== null) {
       if (selectedGameCode) {
@@ -186,13 +219,20 @@ export class App extends React.Component<unknown, AppState> {
       }
 
       const extracts = await this.apiClient.getExtracts(selectedBookId);
-      const firstExtract = extracts[0] ?? null;
+      const total = extracts.length;
+
+      const safeIndex = this.clampChapterIndex(currentChapterIndex, total);
+      const chosenExtract = extracts[safeIndex] ?? null;
 
       this.setState({
-        selectedExtractId: firstExtract ? firstExtract.id : null,
+        selectedBookExtracts: extracts,
+        selectedBookTotalChapters: total,
+        currentChapterIndex: safeIndex,
+        selectedExtractId: chosenExtract ? chosenExtract.id : null,
         route: 'puzzle',
         results: null,
       });
+
       return;
     }
 
@@ -206,17 +246,25 @@ export class App extends React.Component<unknown, AppState> {
     }
   }
 
+  // ✅ refresh books też przy powrocie na home (żeby nie było “stare”)
   handleBackToHome(): void {
-    this.setState({
-      route: 'home',
-      selectedGameId: null,
-      selectedGameType: null,
-      selectedGameCode: null,
-      selectedBookId: null,
-      selectedExtractId: null,
-      currentChapterIndex: 0,
-      results: null,
-    });
+    this.setState(
+      {
+        route: 'home',
+        selectedGameId: null,
+        selectedGameType: null,
+        selectedGameCode: null,
+        selectedBookId: null,
+        selectedExtractId: null,
+        currentChapterIndex: 0,
+        results: null,
+        selectedBookExtracts: [],
+        selectedBookTotalChapters: null,
+      },
+      () => {
+        void this.loadBooksAndProgress();
+      },
+    );
   }
 
   handleFinishLevel(results: GameResults): void {
@@ -251,20 +299,49 @@ export class App extends React.Component<unknown, AppState> {
   }
 
   handleNextExtract(): void {
-    this.handlePlayAgain();
-  }
+    const { selectedBookId, selectedGameType, selectedBookTotalChapters, currentChapterIndex } = this.state;
+    if (!selectedBookId || !selectedGameType) return;
 
-  handleBackToLibraryFromResults(): void {
+    const total = selectedBookTotalChapters ?? 0;
+    const nextIndex = currentChapterIndex + 1;
+
+    if (total > 0 && nextIndex >= total) return;
+
+    if (this.state.selectedBookExtracts.length === 0) {
+      this.setState({ currentChapterIndex: nextIndex }, () => void this.afterSelection());
+      return;
+    }
+
+    const extracts = this.state.selectedBookExtracts;
+    const chosen = extracts[nextIndex] ?? null;
+
     this.setState({
-      route: 'selectBook',
-      selectedBookId: null,
-      selectedExtractId: null,
-      selectedGameId: null,
-      selectedGameType: null,
-      selectedGameCode: null,
-      currentChapterIndex: 0,
+      currentChapterIndex: nextIndex,
+      selectedExtractId: chosen ? chosen.id : null,
+      route: 'puzzle',
       results: null,
     });
+  }
+
+  // ✅ KLUCZ: po powrocie z results odśwież books
+  handleBackToLibraryFromResults(): void {
+    this.setState(
+      {
+        route: 'selectBook',
+        selectedBookId: null,
+        selectedExtractId: null,
+        selectedGameId: null,
+        selectedGameType: null,
+        selectedGameCode: null,
+        currentChapterIndex: 0,
+        results: null,
+        selectedBookExtracts: [],
+        selectedBookTotalChapters: null,
+      },
+      () => {
+        void this.loadBooksAndProgress();
+      },
+    );
   }
 
   handleOpenProgress(): void {
@@ -314,6 +391,12 @@ export class App extends React.Component<unknown, AppState> {
         nickError: this.state.language === 'pl' ? 'Nie udało się utworzyć sesji.' : 'Failed to create session.',
       });
     }
+  }
+
+  private canGoNextExtract(): boolean {
+    const total = this.state.selectedBookTotalChapters;
+    if (!total || total <= 0) return false;
+    return this.state.currentChapterIndex + 1 < total;
   }
 
   renderCurrentView() {
@@ -372,7 +455,7 @@ export class App extends React.Component<unknown, AppState> {
           language={language}
           books={books}
           progress={progress}
-          onBack={() => this.setState({ route: 'home' })}
+          onBack={() => this.setState({ route: 'home' }, () => void this.loadBooksAndProgress())}
         />
       );
     }
@@ -473,10 +556,11 @@ export class App extends React.Component<unknown, AppState> {
       return (
         <ResultsScreen
           language={language}
-          results={this.state.results!}
+          results={this.state.results ?? undefined}
           onPlayAgain={this.handlePlayAgain}
           onNextExtract={this.handleNextExtract}
           onBackToLibrary={this.handleBackToLibraryFromResults}
+          isNextExtractDisabled={!this.canGoNextExtract()}
         />
       );
     }

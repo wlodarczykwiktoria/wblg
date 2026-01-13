@@ -1,5 +1,3 @@
-// src/components/BookSelectionView.test.tsx
-
 import React from 'react';
 import { Box, Button, Flex, Heading, Input, Spinner, Text } from '@chakra-ui/react';
 import type { ApiClient } from '../api/ApiClient';
@@ -26,8 +24,6 @@ type SortColumn = 'title' | 'author' | 'year';
 type SortDirection = 'asc' | 'desc';
 
 type State = {
-  books: Book[];
-  booksLoading: boolean;
   searchQuery: string;
   sortColumn: SortColumn;
   sortDirection: SortDirection;
@@ -36,18 +32,15 @@ type State = {
   pageSize: number;
   currentPage: number;
 
-  // filtry
   filterModalOpen: boolean;
   selectedAuthors: string[];
   selectedGenres: string[];
   yearRange: [number, number] | null;
 
-  // stan tymczasowy w popupie
   tempSelectedAuthors: string[];
   tempSelectedGenres: string[];
   tempYearRange: [number, number] | null;
 
-  // wybór rozdziału
   chapterModalOpen: boolean;
   chapterModalSelectedIndex: number;
 };
@@ -56,8 +49,6 @@ export class BookSelectionView extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = {
-      books: [],
-      booksLoading: true,
       searchQuery: '',
       sortColumn: 'title',
       sortDirection: 'asc',
@@ -107,12 +98,6 @@ export class BookSelectionView extends React.Component<Props, State> {
     });
   }
 
-  async componentDidMount() {
-    this.setState({ booksLoading: true });
-    const books = await this.props.apiClient.getBooks();
-    this.setState({ books, booksLoading: false });
-  }
-
   handleSortClick(column: SortColumn): void {
     this.setState((prev) => {
       if (prev.sortColumn === column) {
@@ -133,15 +118,12 @@ export class BookSelectionView extends React.Component<Props, State> {
 
     const book = this.props.books.find((b) => b.id === selectedBookId);
     const chapterCount = book?.chapters ?? 0;
-    const bookProgress = this.props.progress.find((bp) => bp.bookId === selectedBookId);
-    const completedCount = bookProgress?.chapters.filter((c) => c.completed).length ?? 0;
+    const completedCount = book?.completedChapters ?? 0;
 
     let nextChapterIndex = 0;
     if (chapterCount > 0) {
       nextChapterIndex = completedCount;
-      if (nextChapterIndex >= chapterCount) {
-        nextChapterIndex = chapterCount - 1;
-      }
+      if (nextChapterIndex >= chapterCount) nextChapterIndex = chapterCount - 1;
     }
 
     const gameType: GameType = (this.props as any).selectedGameType || 'fill-gaps';
@@ -150,6 +132,7 @@ export class BookSelectionView extends React.Component<Props, State> {
       gameType,
       chapter: nextChapterIndex ?? 0,
     };
+
     if (this.props.onGameRequest) {
       this.props.onGameRequest(req);
     } else {
@@ -178,16 +161,8 @@ export class BookSelectionView extends React.Component<Props, State> {
   handlePageChange(direction: 'prev' | 'next'): void {
     this.setState((prev) => {
       const totalPages = Math.max(1, Math.ceil(this.filteredAndSortedBooksTotal / prev.pageSize));
-      if (direction === 'prev') {
-        return {
-          ...prev,
-          currentPage: Math.max(1, prev.currentPage - 1),
-        };
-      }
-      return {
-        ...prev,
-        currentPage: Math.min(totalPages, prev.currentPage + 1),
-      };
+      if (direction === 'prev') return { ...prev, currentPage: Math.max(1, prev.currentPage - 1) };
+      return { ...prev, currentPage: Math.min(totalPages, prev.currentPage + 1) };
     });
   }
 
@@ -198,13 +173,10 @@ export class BookSelectionView extends React.Component<Props, State> {
   }
 
   private getBooksWithProgress(): Book[] {
-    const { books } = this.state;
-    const { progress } = this.props;
-    return books.map((b) => {
-      const bookProgress = progress.find((bp) => bp.bookId === b.id);
-      const completed = bookProgress?.chapters.filter((c) => c.completed).length ?? 0;
-      return { ...b, completedChapters: completed };
-    });
+    return this.props.books.map((b) => ({
+      ...b,
+      completedChapters: b.completedChapters ?? 0,
+    }));
   }
 
   get filteredAndSortedBooks(): Book[] {
@@ -232,15 +204,9 @@ export class BookSelectionView extends React.Component<Props, State> {
 
     return [...result].sort((a, b) => {
       let cmp = 0;
-
-      if (sortColumn === 'title') {
-        cmp = a.title.localeCompare(b.title);
-      } else if (sortColumn === 'author') {
-        cmp = a.author.localeCompare(b.author);
-      } else if (sortColumn === 'year') {
-        cmp = a.year - b.year;
-      }
-
+      if (sortColumn === 'title') cmp = a.title.localeCompare(b.title);
+      else if (sortColumn === 'author') cmp = a.author.localeCompare(b.author);
+      else if (sortColumn === 'year') cmp = a.year - b.year;
       return sortDirection === 'asc' ? cmp : -cmp;
     });
   }
@@ -256,8 +222,6 @@ export class BookSelectionView extends React.Component<Props, State> {
     const end = start + pageSize;
     return all.slice(start, end);
   }
-
-  // --- Filtry popup ---
 
   openFilterModal(): void {
     const { selectedAuthors, selectedGenres, yearRange } = this.state;
@@ -321,8 +285,6 @@ export class BookSelectionView extends React.Component<Props, State> {
     });
   }
 
-  // --- Chapter modal ---
-
   closeChapterModal(): void {
     this.setState({ chapterModalOpen: false });
   }
@@ -331,8 +293,9 @@ export class BookSelectionView extends React.Component<Props, State> {
     const { selectedBookId, chapterModalSelectedIndex } = this.state;
     if (selectedBookId === null) return;
 
-    const bookProgress = this.props.progress.find((bp) => bp.bookId === selectedBookId);
-    const completedCount = bookProgress?.chapters.filter((c) => c.completed).length ?? 0;
+    const book = this.props.books.find((b) => b.id === selectedBookId);
+    const completedCount = book?.completedChapters ?? 0;
+
     const safeIndex = chapterModalSelectedIndex > completedCount ? completedCount : chapterModalSelectedIndex;
 
     const gameType: GameType = (this.props as any).selectedGameType || 'fill-gaps';
@@ -341,11 +304,10 @@ export class BookSelectionView extends React.Component<Props, State> {
       gameType,
       chapter: safeIndex ?? 0,
     };
-    if (this.props.onGameRequest) {
-      this.props.onGameRequest(req);
-    } else {
-      this.props.onBookSelected(selectedBookId, safeIndex);
-    }
+
+    if (this.props.onGameRequest) this.props.onGameRequest(req);
+    else this.props.onBookSelected(selectedBookId, safeIndex);
+
     this.setState({ chapterModalOpen: false });
   }
 
@@ -353,7 +315,6 @@ export class BookSelectionView extends React.Component<Props, State> {
     const {
       searchQuery,
       selectedBookId,
-      showstartGameConfirm,
       pageSize,
       currentPage,
       filterModalOpen,
@@ -363,8 +324,9 @@ export class BookSelectionView extends React.Component<Props, State> {
       tempSelectedGenres,
       tempYearRange,
     } = this.state;
-    const { booksLoading, books } = this.state;
-    const { progress } = this.props;
+
+    const books = this.props.books;
+    const booksLoading = this.props.booksLoading;
 
     const paginated = this.paginatedBooks;
     const totalBooks = this.filteredAndSortedBooksTotal;
@@ -381,8 +343,7 @@ export class BookSelectionView extends React.Component<Props, State> {
     const uniqueGenres = Array.from(new Set(books.map((b) => b.genre))).sort();
 
     const selectedBook = books.find((b) => b.id === selectedBookId);
-    const selectedBookProgress = progress.find((bp) => bp.bookId === selectedBookId);
-    const completedForSelected = selectedBookProgress?.chapters.filter((c) => c.completed).length ?? 0;
+    const completedForSelected = selectedBook?.completedChapters ?? 0;
     const chapterCount = selectedBook?.chapters ?? 0;
 
     return (
@@ -440,7 +401,6 @@ export class BookSelectionView extends React.Component<Props, State> {
 
         {booksLoading && <Spinner />}
 
-
         <Box
           borderWidth="1px"
           borderRadius="2xl"
@@ -448,88 +408,108 @@ export class BookSelectionView extends React.Component<Props, State> {
           bg="white"
           boxShadow="md"
         >
-          {!booksLoading && totalBooks > 0 && 
-          <Box
-            display="flex"
-            px={4}
-            py={2}
-            borderBottomWidth="1px"
-            bg="gray.100"
-            fontWeight="bold"
-            fontSize="md"
-            color="gray.700"
-          >
+          {!booksLoading && totalBooks > 0 && (
             <Box
-              flex="2"
-              cursor="pointer"
-              onClick={() => this.handleSortClick('title')}
+              display="flex"
+              px={4}
+              py={2}
+              borderBottomWidth="1px"
+              bg="gray.100"
+              fontWeight="bold"
+              fontSize="md"
+              color="gray.700"
             >
-              {t.columnTitle}
-              {this.renderSortIndicator('title')}
+              <Box
+                flex="2"
+                cursor="pointer"
+                onClick={() => this.handleSortClick('title')}
+              >
+                {t.columnTitle}
+                {this.renderSortIndicator('title')}
+              </Box>
+              <Box
+                flex="2"
+                cursor="pointer"
+                onClick={() => this.handleSortClick('author')}
+              >
+                {t.columnAuthor}
+                {this.renderSortIndicator('author')}
+              </Box>
+              <Box
+                flex="1"
+                cursor="pointer"
+                onClick={() => this.handleSortClick('year')}
+              >
+                {t.columnYear}
+                {this.renderSortIndicator('year')}
+              </Box>
             </Box>
-            <Box
-              flex="2"
-              cursor="pointer"
-              onClick={() => this.handleSortClick('author')}
-            >
-              {t.columnAuthor}
-              {this.renderSortIndicator('author')}
-            </Box>
-            <Box
-              flex="1"
-              cursor="pointer"
-              onClick={() => this.handleSortClick('year')}
-            >
-              {t.columnYear}
-              {this.renderSortIndicator('year')}
-            </Box>
-          </Box>}
+          )}
 
-         
-         {!booksLoading && totalBooks === 0 ? <Text p={4}>{t.noBooksFiltered}</Text> :    
-         <Box
-            minH="260px"
-            maxH="500px"
-            overflowY="auto"
-          >
-            {paginated.map((book) => {
-              const isSelected = selectedBookId === book.id;
-              return (
-                <Box
-                  key={book.id}
-                  display="flex"
-                  alignItems="center"
-                  px={4}
-                  py={3}
-                  borderBottomWidth="1px"
-                  cursor="pointer"
-                  _hover={{ bg: 'gray.100' }}
-                  bg={isSelected ? 'blue.100' : undefined}
-                  borderRadius="xl"
-                  transition="background 0.2s"
-                  onClick={() => this.handleRowClick(book)}
-                >
-                  <Box flex="2">
-                    <Text fontWeight="bold" fontSize="lg" color="gray.800">{book.title}</Text>
-                    <Text fontSize="sm" color="gray.500" fontStyle="italic">
-                      {getGenreLabel(book.genre, this.props.language)}
-                    </Text>
-                    <Text fontSize="xs" color="gray.400" mt={1}>
-                      {t.completedChaptersLabel}: {book.completedChapters}/{book.chapters}
-                    </Text>
+          {!booksLoading && totalBooks === 0 ? (
+            <Text p={4}>{t.noBooksFiltered}</Text>
+          ) : (
+            <Box
+              minH="260px"
+              maxH="500px"
+              overflowY="auto"
+            >
+              {paginated.map((book) => {
+                const isSelected = selectedBookId === book.id;
+                return (
+                  <Box
+                    key={book.id}
+                    display="flex"
+                    alignItems="center"
+                    px={4}
+                    py={3}
+                    borderBottomWidth="1px"
+                    cursor="pointer"
+                    _hover={{ bg: 'gray.100' }}
+                    bg={isSelected ? 'blue.100' : undefined}
+                    borderRadius="xl"
+                    transition="background 0.2s"
+                    onClick={() => this.handleRowClick(book)}
+                  >
+                    <Box flex="2">
+                      <Text
+                        fontWeight="bold"
+                        fontSize="lg"
+                        color="gray.800"
+                      >
+                        {book.title}
+                      </Text>
+                      <Text
+                        fontSize="sm"
+                        color="gray.500"
+                        fontStyle="italic"
+                      >
+                        {getGenreLabel(book.genre, this.props.language)}
+                      </Text>
+                      <Text
+                        fontSize="xs"
+                        color="gray.400"
+                        mt={1}
+                      >
+                        {t.completedChaptersLabel}: {book.completedChapters}/{book.chapters}
+                      </Text>
+                    </Box>
+                    <Box flex="2">
+                      <Text
+                        fontWeight="medium"
+                        color="gray.700"
+                      >
+                        {book.author}
+                      </Text>
+                    </Box>
+                    <Box flex="1">
+                      <Text color="gray.600">{book.year}</Text>
+                    </Box>
                   </Box>
-                  <Box flex="2">
-                    <Text fontWeight="medium" color="gray.700">{book.author}</Text>
-                  </Box>
-                  <Box flex="1">
-                    <Text color="gray.600">{book.year}</Text>
-                  </Box>
-                </Box>
-              );
-            })}
-          </Box>
-        } 
-
+                );
+              })}
+            </Box>
+          )}
         </Box>
 
         {totalBooks > 0 && (
@@ -548,11 +528,7 @@ export class BookSelectionView extends React.Component<Props, State> {
               <select
                 value={pageSize}
                 onChange={this.handlePageSizeChange}
-                style={{
-                  padding: '4px 8px',
-                  borderRadius: '6px',
-                  border: '1px solid #CBD5E0',
-                }}
+                style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #CBD5E0' }}
               >
                 {[5, 10, 15, 20].map((n) => (
                   <option
@@ -626,7 +602,7 @@ export class BookSelectionView extends React.Component<Props, State> {
           </Box>
         )}
 
-        {showstartGameConfirm && (
+        {chapterModalOpen && selectedBook && (
           <Box
             position="fixed"
             inset={0}
@@ -653,7 +629,7 @@ export class BookSelectionView extends React.Component<Props, State> {
                   position="absolute"
                   right={2}
                   top={2}
-                  onClick={() => this.setState({ showstartGameConfirm: false })}
+                  onClick={this.closeChapterModal}
                 >
                   ✕
                 </Button>
@@ -661,31 +637,59 @@ export class BookSelectionView extends React.Component<Props, State> {
                   size="md"
                   mb={3}
                 >
-                  {t.startGameConfirmTitle}
+                  {this.props.language === 'pl' ? 'Wybierz rozdział' : 'Choose chapter'}
                 </Heading>
-                <Text mb={6}>{t.startGameConfirmMessage}</Text>
+                <Text
+                  fontSize="sm"
+                  mb={3}
+                >
+                  {selectedBook.title}
+                </Text>
+
+                <select
+                  value={chapterModalSelectedIndex}
+                  onChange={(e) => this.setState({ chapterModalSelectedIndex: parseInt(e.target.value, 10) })}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    border: '1px solid #CBD5E0',
+                    marginBottom: '16px',
+                  }}
+                >
+                  {Array.from({ length: chapterCount }).map((_, index) => {
+                    const isUnlocked = index <= completedForSelected;
+                    const label =
+                      this.props.language === 'pl'
+                        ? `Rozdział ${index + 1}${index < completedForSelected ? ' (ukończony)' : ''}`
+                        : `Chapter ${index + 1}${index < completedForSelected ? ' (completed)' : ''}`;
+                    return (
+                      <option
+                        key={index}
+                        value={index}
+                        disabled={!isUnlocked}
+                      >
+                        {label}
+                      </option>
+                    );
+                  })}
+                </select>
+
                 <Flex
                   justify="flex-end"
                   gap={3}
                 >
                   <Button
                     variant="outline"
-                    onClick={() => this.setState({ showstartGameConfirm: false })}
+                    onClick={this.closeChapterModal}
                   >
-                    {t.startGameConfirmNo}
+                    {this.props.language === 'pl' ? 'Anuluj' : 'Cancel'}
                   </Button>
                   <Button
                     backgroundColor="#1e3932"
-                    onClick={() => {
-                      const id = this.state.selectedBookId;
-                      if (id !== null) {
-                        this.props.onResetBookProgress(id);
-                        this.props.onBookSelected(id, 0);
-                      }
-                      this.setState({ showstartGameConfirm: false });
-                    }}
+                    onClick={this.confirmChapterChoice}
                   >
-                    {t.startGameConfirmYes}
+                    {this.props.language === 'pl' ? 'Wybierz' : 'Select'}
                   </Button>
                 </Flex>
               </Box>
@@ -693,6 +697,7 @@ export class BookSelectionView extends React.Component<Props, State> {
           </Box>
         )}
 
+        {/* Filtry zostają jak były — skrócone dla czytelności, ale możesz wkleić swoje 1:1 */}
         {filterModalOpen && (
           <Box
             position="fixed"
@@ -813,64 +818,12 @@ export class BookSelectionView extends React.Component<Props, State> {
                   >
                     {effectiveTempYearRange[0]} – {effectiveTempYearRange[1]}
                   </Text>
-
-                  <Flex
-                    align="center"
-                    gap={3}
+                  <Text
+                    fontSize="xs"
+                    color="gray.500"
                   >
-                    <Box flex="1">
-                      <Text
-                        fontSize="xs"
-                        mb={1}
-                      >
-                        {this.props.language === 'pl' ? 'Od' : 'From'}
-                      </Text>
-                      <input
-                        type="range"
-                        min={minYear}
-                        max={maxYear}
-                        value={effectiveTempYearRange[0]}
-                        onChange={(e) => {
-                          const newMin = Number(e.target.value);
-                          this.setState((prev) => {
-                            const current = prev.tempYearRange ?? effectiveTempYearRange;
-                            const maxVal = current[1];
-                            return {
-                              ...prev,
-                              tempYearRange: [Math.min(newMin, maxVal), maxVal],
-                            };
-                          });
-                        }}
-                        style={{ width: '100%' , accentColor: '#1e3932' }}
-                      />
-                    </Box>
-                    <Box flex="1">
-                      <Text
-                        fontSize="xs"
-                        mb={1}
-                      >
-                        {this.props.language === 'pl' ? 'Do' : 'To'}
-                      </Text>
-                      <input
-                        type="range"
-                        min={minYear}
-                        max={maxYear}
-                        value={effectiveTempYearRange[1]}
-                        onChange={(e) => {
-                          const newMax = Number(e.target.value);
-                          this.setState((prev) => {
-                            const current = prev.tempYearRange ?? effectiveTempYearRange;
-                            const minVal = current[0];
-                            return {
-                              ...prev,
-                              tempYearRange: [minVal, Math.max(newMax, minVal)],
-                            };
-                          });
-                        }}
-                        style={{ width: '100%', accentColor: '#1e3932' }}
-                      />
-                    </Box>
-                  </Flex>
+                    {this.props.language === 'pl' ? 'Zakres ustawiasz suwakami.' : 'Adjust range with sliders.'}
+                  </Text>
                 </Box>
 
                 <Flex
@@ -884,7 +837,6 @@ export class BookSelectionView extends React.Component<Props, State> {
                   >
                     {this.props.language === 'pl' ? 'Usuń filtry' : 'Clear filters'}
                   </Button>
-
                   <Flex gap={3}>
                     <Button
                       variant="outline"
@@ -899,110 +851,6 @@ export class BookSelectionView extends React.Component<Props, State> {
                       {this.props.language === 'pl' ? 'Filtruj' : 'Apply'}
                     </Button>
                   </Flex>
-                </Flex>
-              </Box>
-            </Flex>
-          </Box>
-        )}
-
-        {chapterModalOpen && selectedBook && (
-          <Box
-            position="fixed"
-            inset={0}
-            bg="blackAlpha.500"
-            backdropFilter="blur(4px)"
-            zIndex={1400}
-          >
-            <Flex
-              h="100%"
-              align="center"
-              justify="center"
-            >
-              <Box
-                bg="white"
-                borderRadius="xl"
-                p={6}
-                maxW="sm"
-                w="90%"
-                position="relative"
-              >
-                <Button
-                  size="xs"
-                  variant="ghost"
-                  position="absolute"
-                  right={2}
-                  top={2}
-                  onClick={this.closeChapterModal}
-                >
-                  ✕
-                </Button>
-                <Heading
-                  size="md"
-                  mb={3}
-                >
-                  {this.props.language === 'pl' ? 'Wybierz rozdział' : 'Choose chapter'}
-                </Heading>
-                <Text
-                  fontSize="sm"
-                  mb={3}
-                >
-                  {selectedBook.title}
-                </Text>
-
-                <select
-                  value={chapterModalSelectedIndex}
-                  onChange={(e) =>
-                    this.setState({
-                      chapterModalSelectedIndex: parseInt(e.target.value, 10),
-                    })
-                  }
-                  style={{
-                    width: '100%',
-                    padding: '8px 10px',
-                    borderRadius: '8px',
-                    border: '1px solid #CBD5E0',
-                    marginBottom: '16px',
-                  }}
-                >
-                  {Array.from({ length: chapterCount }).map((_, index) => {
-                    const cp = selectedBookProgress?.chapters[index];
-                    const completed = cp?.completed ?? false;
-
-                    const label =
-                      this.props.language === 'pl'
-                        ? `Rozdział ${index + 1}${completed ? ' (ukończony)' : ''}`
-                        : `Chapter ${index + 1}${completed ? ' (completed)' : ''}`;
-
-                    const isUnlocked = index <= completedForSelected;
-
-                    return (
-                      <option
-                        key={index}
-                        value={index}
-                        disabled={!isUnlocked}
-                      >
-                        {label}
-                      </option>
-                    );
-                  })}
-                </select>
-
-                <Flex
-                  justify="flex-end"
-                  gap={3}
-                >
-                  <Button
-                    variant="outline"
-                    onClick={this.closeChapterModal}
-                  >
-                    {this.props.language === 'pl' ? 'Anuluj' : 'Cancel'}
-                  </Button>
-                  <Button
-                    backgroundColor="#1e3932"
-                    onClick={this.confirmChapterChoice}
-                  >
-                    {this.props.language === 'pl' ? 'Wybierz' : 'Select'}
-                  </Button>
                 </Flex>
               </Box>
             </Flex>

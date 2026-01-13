@@ -52,6 +52,9 @@ const PAIR_COLORS = [
   { bg: 'purple.200', badgeBg: 'purple.500' },
   { bg: 'red.200', badgeBg: 'red.500' },
   { bg: 'blue.200', badgeBg: 'blue.500' },
+  { bg: 'green.200', badgeBg: 'green.500' },
+  { bg: 'purple.200', badgeBg: 'purple.500' },
+  { bg: 'pink.200', badgeBg: 'pink.500' },
 ];
 
 export const SwitchGame: React.FC<Props> = ({ riddle, selectedPairs, openWordId, onWordClick }) => {

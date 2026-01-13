@@ -223,7 +223,6 @@ export class ProgressView extends React.Component<Props, State> {
             {selectedBook.author}
           </Text>
 
-          {/* progress box jak ResultsScreen */}
           <Box mx="auto" maxW="sm" borderWidth="1px" borderRadius="2xl" p={6} mb={8} bg="gray.50" boxShadow="md">
             <Text fontSize="xs" textTransform="uppercase" letterSpacing="wide" color="gray.500" mb={2}>
               {language === 'pl' ? 'Chapters completed' : 'Chapters completed'}
@@ -285,7 +284,6 @@ export class ProgressView extends React.Component<Props, State> {
             </Box>
           )}
 
-          {/* ✅ Back + Close obok siebie i równa szerokość */}
           <Flex justify="center" gap={4} mt={8}>
             <Button variant="outline" width="160px" onClick={this.closeModal}>
               {language === 'pl' ? 'Zamknij' : 'Close'}
@@ -330,7 +328,6 @@ export class ProgressView extends React.Component<Props, State> {
           </Text>
         )}
 
-        {/* nagłówek tabelki */}
         <Box display="flex" px={4} py={2} borderBottomWidth="1px" bg="gray.50" fontWeight="bold" fontSize="sm">
           <Box flex="2">{t.columnTitle}</Box>
           <Box flex="2">{t.columnAuthor}</Box>
@@ -376,7 +373,6 @@ export class ProgressView extends React.Component<Props, State> {
           </Text>
         )}
 
-        {/* ✅ Modal */}
         {selectedBook && this.renderSummaryModal(selectedBook)}
       </Box>
     );

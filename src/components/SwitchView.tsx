@@ -39,7 +39,7 @@ type State = {
   switchGameId: number | null;
 };
 
-const MAX_PAIRS_PER_PUZZLE = 3;
+const MAX_PAIRS_PER_PUZZLE = 6;
 
 export class SwitchView extends React.Component<Props, State> {
   private timerId: number | null = null;

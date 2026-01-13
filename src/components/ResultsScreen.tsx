@@ -10,6 +10,7 @@ type Props = {
   onPlayAgain(): void;
   onNextExtract(): void;
   onBackToLibrary(): void;
+  isNextExtractDisabled?: boolean;
 };
 
 function formatTime(seconds: number): string {
@@ -214,12 +215,17 @@ export class ResultsScreen extends React.Component<Props> {
             >
               {t.playAgainLabel}
             </Button>
+
             <Button
               backgroundColor="#1e3932"
               onClick={this.props.onNextExtract}
+              disabled={!!this.props.isNextExtractDisabled}
+              opacity={this.props.isNextExtractDisabled ? 0.6 : 1}
+              cursor={this.props.isNextExtractDisabled ? 'not-allowed' : 'pointer'}
             >
               {t.nextExtractLabel}
             </Button>
+
             <Button
               variant="outline"
               onClick={this.props.onBackToLibrary}
