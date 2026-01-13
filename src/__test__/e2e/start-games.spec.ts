@@ -9,12 +9,13 @@ async function selectFirstBookFromList(page: Page) {
 }
 
 async function waitForGameScreen(page: Page) {
-  // uniwersalnie dla Twoich gier: Pause + timer
   await expect(page.getByRole('button', { name: /pause/i })).toBeVisible({ timeout: 30_000 });
 
-  // “Time left” / “Czas” – zależy od języka, więc regex
-  await expect(page.getByText(/time left|czas/i)).toBeVisible({ timeout: 30_000 });
+  // Timer jako wartość mm:ss
+  const timer = page.locator('text=/\\d+:\\d{2}/').first();
+  await expect(timer).toBeVisible({ timeout: 30_000 });
 }
+
 
 async function startGame(page: Page, gameButtonName: RegExp) {
   await page.goto(baseURL);

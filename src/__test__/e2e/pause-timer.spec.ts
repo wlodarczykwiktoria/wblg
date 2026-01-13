@@ -10,8 +10,10 @@ async function selectFirstBookFromList(page: Page) {
 
 async function waitForGameScreen(page: Page) {
   await expect(page.getByRole('button', { name: /pause/i })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText(/time left|czas/i)).toBeVisible({ timeout: 30_000 });
+  const timer = page.locator('text=/\\d+:\\d{2}/').first();
+  await expect(timer).toBeVisible({ timeout: 30_000 });
 }
+
 
 test.describe('Timer i pauza w grze', () => {
   test.setTimeout(60_000);
@@ -27,9 +29,20 @@ test.describe('Timer i pauza w grze', () => {
 
     await selectFirstBookFromList(page);
 
-    await page.getByRole('button', { name: /start game/i }).click();
+    const [resp] = await Promise.all([
+      page.waitForResponse(
+          r =>
+              r.request().method() === 'POST' &&
+              r.url().includes('/games') &&
+              r.url().includes('/start'),
+          { timeout: 30_000 },
+      ),
+      page.getByRole('button', { name: /start game/i }).click(),
+    ]);
 
+    expect(resp.ok()).toBeTruthy();
     await waitForGameScreen(page);
+
   }
 
   test('timer "rośnie" w trakcie gry', async ({ page }) => {
