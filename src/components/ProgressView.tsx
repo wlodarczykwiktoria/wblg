@@ -216,7 +216,7 @@ export class ProgressView extends React.Component<Props, State> {
           onClick={(e) => e.stopPropagation()}
           textAlign="center"
         >
-          <Heading size="md" mb={2} color="green.600" fontWeight="extrabold">
+          <Heading size="md" mb={2} color="#0F6B52" fontWeight="extrabold">
             {selectedBook.title}
           </Heading>
           <Text mb={8} color="gray.500" fontSize="md">

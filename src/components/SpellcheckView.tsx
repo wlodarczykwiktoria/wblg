@@ -195,14 +195,6 @@ export class SpellcheckView extends React.Component<Props, State> {
     if (loading || riddles.length === 0) {
       return (
         <Box>
-          <Button
-            size="sm"
-            mb={4}
-            variant="ghost"
-            onClick={this.props.onBackToHome}
-          >
-            ← {t.back}
-          </Button>
           <Spinner />
         </Box>
       );
@@ -218,69 +210,77 @@ export class SpellcheckView extends React.Component<Props, State> {
     return (
       <Box
         position="relative"
-        maxW="5xl"
+        maxW="6xl"
         mx="auto"
+        px={{ base: 4, md: 6 }}
+        py={{ base: 4, md: 6 }}
       >
-        <Stack>
-          <Flex
-            justify="right"
-            align="center"
-          >
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={this.handlePause}
-            >
-              {t.pauseLabel}
-            </Button>
+        <Stack gap={10}>
+          <Flex justify="space-between" align="center" wrap="wrap" gap={3}>
+            <Box px={4} py={2} borderRadius="full" bg="white" boxShadow="0 8px 20px rgba(15, 23, 42, 0.06)">
+              <Text fontSize="sm" fontWeight="700" color="gray.700">
+                {t.puzzleOfLabel} {currentIndex + 1}/{riddles.length}
+              </Text>
+            </Box>
+
+            <Flex align="center" gap={3}>
+              <Box px={4} py={2} borderRadius="full" bg="white" boxShadow="0 8px 20px rgba(15, 23, 42, 0.06)">
+                <Text fontSize="sm" fontWeight="700" color="gray.700">
+                  {t.timeLeftLabel}: <strong>{timeLabel}</strong>
+                </Text>
+              </Box>
+
+              <Button size="sm" variant="outline" borderRadius="full" px={5} onClick={this.handlePause}>
+                {t.pauseLabel}
+              </Button>
+            </Flex>
           </Flex>
 
-          <Flex
-            justify="space-between"
-            align="center"
-          >
-            <Heading size="sm">
-              {t.puzzleOfLabel} {currentIndex + 1}/{riddles.length}
+          <Box textAlign="center" mb={2}>
+            <Heading fontSize={{ base: '2xl', md: '4xl' }} fontWeight="800" color="#4B4572" mb={3}>
+              {t.spellcheckHeading}
             </Heading>
-            <Text fontSize="sm">
-              {t.timeLeftLabel}: <strong>{timeLabel}</strong>
+
+            <Text fontSize={{ base: 'md', md: 'xl' }} color="gray.600" maxW="3xl" mx="auto">
+              {t.spellcheckInstructions}
             </Text>
-          </Flex>
+          </Box>
 
-          <Heading
-            size="md"
-            mt={2}
-          >
-            {t.spellcheckHeading}
-          </Heading>
-          <Text
-              fontSize="sm"
-              color="gray.600"
-          >
-            {t.spellcheckInstructions}
-          </Text>
+          <Box>
+            <SpellcheckGame
+              riddle={riddle}
+              selectedWordIds={selectedWordIds}
+              onToggleWord={this.handleToggleWord}
+            />
+          </Box>
 
-          <SpellcheckGame
-            riddle={riddle}
-            selectedWordIds={selectedWordIds}
-            onToggleWord={this.handleToggleWord}
-          />
-
-          <Flex
-            justify="space-between"
-            mt={2}
-          >
+          <Flex justify="space-between" align="center" mt={2} gap={4}>
             <Button
-              size="sm"
+              size="md"
               variant="outline"
+              borderRadius="20px"
+              px={6}
+              py={6}
+              color="#6B5AA6"
+              borderColor="#D8D1EE"
+              bg="white"
+              _hover={{ bg: '#F8F6FF' }}
               onClick={this.goPrev}
               disabled={currentIndex === 0}
             >
               ← {t.prevPuzzleLabel}
             </Button>
+
             <Button
-              size="sm"
+              size="md"
               variant="outline"
+              borderRadius="20px"
+              px={6}
+              py={6}
+              color="#6B5AA6"
+              borderColor="#D8D1EE"
+              bg="white"
+              _hover={{ bg: '#F8F6FF' }}
               onClick={this.goNext}
               disabled={currentIndex === riddles.length - 1}
             >
@@ -288,46 +288,30 @@ export class SpellcheckView extends React.Component<Props, State> {
             </Button>
           </Flex>
 
-          <Button
-            mt={4}
-            onClick={this.handleFinishClick}
-            backgroundColor="#1e3932"
-          >
-            {t.finishButtonLabel}
-          </Button>
+          <Flex justify="center" mt={2}>
+            <Button
+              onClick={this.handleFinishClick}
+              minW={{ base: '100%', md: '420px' }}
+              h="72px"
+              borderRadius="999px"
+              background="linear-gradient(90deg, #165B49 0%, #0F6B52 100%)"
+              color="white"
+              fontSize={{ base: 'xl', md: '2xl' }}
+              fontWeight="800"
+              boxShadow="0 18px 40px rgba(22, 91, 73, 0.30)"
+              _hover={{ transform: 'translateY(-1px)' }}
+            >
+              {t.finishButtonLabel}
+            </Button>
+          </Flex>
         </Stack>
 
         {showPauseModal && (
-          <Box
-            position="fixed"
-            inset={0}
-            bg="blackAlpha.500"
-            backdropFilter="blur(4px)"
-            zIndex={1400}
-          >
-            <Flex
-              h="100%"
-              align="center"
-              justify="center"
-            >
-              <Box
-                bg="white"
-                borderRadius="xl"
-                p={6}
-                maxW="sm"
-                w="90%"
-                position="relative"
-              >
-                <CloseButton
-                  position="absolute"
-                  right={3}
-                  top={3}
-                  onClick={() => this.handleResume()}
-                />
-                <Heading
-                  size="md"
-                  mb={3}
-                >
+          <Box position="fixed" inset={0} bg="blackAlpha.500" backdropFilter="blur(4px)" zIndex={1400}>
+            <Flex h="100%" align="center" justify="center">
+              <Box bg="white" borderRadius="2xl" p={6} maxW="sm" w="90%" position="relative">
+                <CloseButton position="absolute" right={3} top={3} onClick={() => this.handleResume()} />
+                <Heading size="md" mb={3}>
                   {t.pauseLabel}
                 </Heading>
                 <Text mb={6}>
@@ -335,10 +319,7 @@ export class SpellcheckView extends React.Component<Props, State> {
                     ? 'Gra jest wstrzymana. Możesz w każdej chwili wznowić.'
                     : 'The game is paused. You can resume at any time.'}
                 </Text>
-                <Button
-                  backgroundColor="#1e3932"
-                  onClick={() => this.handleResume()}
-                >
+                <Button borderRadius="full" backgroundColor="#1e3932" color="white" onClick={() => this.handleResume()}>
                   {t.resumeLabel}
                 </Button>
               </Box>
@@ -347,36 +328,16 @@ export class SpellcheckView extends React.Component<Props, State> {
         )}
 
         {showFinishConfirm && (
-          <Box
-            position="fixed"
-            inset={0}
-            bg="blackAlpha.500"
-            backdropFilter="blur(4px)"
-            zIndex={1400}
-          >
-            <Flex
-              h="100%"
-              align="center"
-              justify="center"
-            >
-              <Box
-                bg="white"
-                borderRadius="xl"
-                p={6}
-                maxW="sm"
-                w="90%"
-                position="relative"
-              >
+          <Box position="fixed" inset={0} bg="blackAlpha.500" backdropFilter="blur(4px)" zIndex={1400}>
+            <Flex h="100%" align="center" justify="center">
+              <Box bg="white" borderRadius="2xl" p={6} maxW="sm" w="90%" position="relative">
                 <CloseButton
                   position="absolute"
                   right={3}
                   top={3}
                   onClick={() => this.setState({ showFinishConfirm: false })}
                 />
-                <Heading
-                  size="md"
-                  mb={3}
-                >
+                <Heading size="md" mb={3}>
                   {t.finishEarlyTitle}
                 </Heading>
                 <Text mb={6}>{t.finishEarlyMessage}</Text>

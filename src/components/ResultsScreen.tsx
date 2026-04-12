@@ -61,11 +61,12 @@ export class ResultsScreen extends React.Component<Props> {
           <Heading
             size="lg"
             mb={2}
-            color="green.600"
+            color="#0F6B52"
             fontWeight="extrabold"
           >
             {t.resultsTitle}
           </Heading>
+
           <Text
             mb={8}
             color="gray.500"
@@ -93,13 +94,15 @@ export class ResultsScreen extends React.Component<Props> {
             >
               {t.finalScoreLabel}
             </Text>
+
             <Heading
               size="2xl"
-              color="green.500"
+              color="#0F6B52"
               fontWeight="extrabold"
             >
               {score}
             </Heading>
+
             <Text
               color="gray.600"
               mb={4}
@@ -205,33 +208,72 @@ export class ResultsScreen extends React.Component<Props> {
           </Box>
 
           <Flex
-            justify="center"
-            gap={3}
-            flexWrap="wrap"
+            direction="column"
+            align="center"
+            gap={4}
           >
-            <Button
-              backgroundColor="#1e3932"
-              onClick={this.props.onPlayAgain}
-            >
-              {t.playAgainLabel}
-            </Button>
+            <Flex justify="center">
+              <Button
+                minW={{ base: '100%', sm: '240px' }}
+                h="56px"
+                px={8}
+                borderRadius="999px"
+                background="linear-gradient(90deg, #165B49 0%, #0F6B52 100%)"
+                color="white"
+                fontSize="lg"
+                fontWeight="800"
+                boxShadow="0 12px 28px rgba(22, 91, 73, 0.20)"
+                _hover={{ transform: 'translateY(-1px)' }}
+                onClick={this.props.onNextExtract}
+                disabled={!!this.props.isNextExtractDisabled}
+                opacity={this.props.isNextExtractDisabled ? 0.6 : 1}
+                cursor={this.props.isNextExtractDisabled ? 'not-allowed' : 'pointer'}
+              >
+                {t.nextExtractLabel}
+              </Button>
+            </Flex>
 
-            <Button
-              backgroundColor="#1e3932"
-              onClick={this.props.onNextExtract}
-              disabled={!!this.props.isNextExtractDisabled}
-              opacity={this.props.isNextExtractDisabled ? 0.6 : 1}
-              cursor={this.props.isNextExtractDisabled ? 'not-allowed' : 'pointer'}
+            <Flex
+              justify="center"
+              gap={3}
+              flexWrap="wrap"
             >
-              {t.nextExtractLabel}
-            </Button>
+              <Button
+                minW={{ base: '100%', sm: '190px' }}
+                h="56px"
+                px={8}
+                borderRadius="999px"
+                variant="outline"
+                borderWidth="2px"
+                borderColor="#D8D1EE"
+                bg="white"
+                color="#6B5AA6"
+                fontSize="md"
+                fontWeight="700"
+                _hover={{ bg: '#F8F6FF' }}
+                onClick={this.props.onPlayAgain}
+              >
+                {t.playAgainLabel}
+              </Button>
 
-            <Button
-              variant="outline"
-              onClick={this.props.onBackToLibrary}
-            >
-              {t.backToLibraryLabel}
-            </Button>
+              <Button
+                minW={{ base: '100%', sm: '190px' }}
+                h="56px"
+                px={8}
+                borderRadius="999px"
+                variant="outline"
+                borderWidth="2px"
+                borderColor="#D8D1EE"
+                bg="white"
+                color="#6B5AA6"
+                fontSize="md"
+                fontWeight="700"
+                _hover={{ bg: '#F8F6FF' }}
+                onClick={this.props.onBackToLibrary}
+              >
+                {t.backToLibraryLabel}
+              </Button>
+            </Flex>
           </Flex>
         </Box>
       </Box>

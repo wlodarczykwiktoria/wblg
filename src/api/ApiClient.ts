@@ -229,7 +229,7 @@ export class ApiClient {
   constructor(private readonly baseUrl: string) {}
 
   private readonly gameServiceBaseUrl =
-    'https://polish-literature-based-language-game-574160223694.europe-west1.run.app';
+    'https://plblg-1005982046749.europe-west1.run.app';
 
   private booksCache: Book[] | null = null;
 
@@ -258,7 +258,7 @@ export class ApiClient {
         }
 
         const data = (await res.json()) as Book[];
-        this.booksCache = data; // ✅ zapamiętaj
+        this.booksCache = data; 
         return data;
       } catch {
         this.booksCache = MOCK_BOOKS;

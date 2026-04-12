@@ -17,7 +17,7 @@ type Props = {
   onBookSelected(bookId: number, chapterIndex: number): void;
   onGameRequest?(req: GameRequest): void;
   onResetBookProgress(bookId: number): void;
-  onBack(): void;
+  selectedGameType?: string | null;
 };
 
 type SortColumn = 'title' | 'author' | 'year';
@@ -108,8 +108,26 @@ export class BookSelectionView extends React.Component<Props, State> {
     });
   }
 
+  private getAvailableChapterCount(book: Book): number {
+    const completedCount = book.completedChapters ?? 0;
+    const total = book.chapters ?? 0;
+    return Math.min(total, completedCount + 1);
+  }
+
   handleRowClick(book: Book): void {
+    const availableChapterCount = this.getAvailableChapterCount(book);
+
     this.setState({ selectedBookId: book.id });
+
+    if (availableChapterCount > 1) {
+      this.setState({
+        chapterModalOpen: true,
+        chapterModalSelectedIndex: Math.min(book.completedChapters ?? 0, book.chapters - 1),
+      });
+      return;
+    }
+
+    this.props.onBookSelected(book.id, 0);
   }
 
   handlestartGameClick(): void {
@@ -126,7 +144,7 @@ export class BookSelectionView extends React.Component<Props, State> {
       if (nextChapterIndex >= chapterCount) nextChapterIndex = chapterCount - 1;
     }
 
-    const gameType: GameType = (this.props as any).selectedGameType || 'fill-gaps';
+    const gameType: GameType = (this.props.selectedGameType as GameType) || 'fill-gaps';
     const req: GameRequest = {
       bookId: selectedBookId,
       gameType,
@@ -298,16 +316,7 @@ export class BookSelectionView extends React.Component<Props, State> {
 
     const safeIndex = chapterModalSelectedIndex > completedCount ? completedCount : chapterModalSelectedIndex;
 
-    const gameType: GameType = (this.props as any).selectedGameType || 'fill-gaps';
-    const req: GameRequest = {
-      bookId: selectedBookId,
-      gameType,
-      chapter: safeIndex ?? 0,
-    };
-
-    if (this.props.onGameRequest) this.props.onGameRequest(req);
-    else this.props.onBookSelected(selectedBookId, safeIndex);
-
+    this.props.onBookSelected(selectedBookId, safeIndex);
     this.setState({ chapterModalOpen: false });
   }
 
@@ -336,7 +345,7 @@ export class BookSelectionView extends React.Component<Props, State> {
 
     const years = books.map((b) => b.year);
     const minYear = years.length > 0 ? Math.min(...years) : 1800;
-    const maxYear = years.length > 0 ? Math.max(...years) : 2020;
+    const maxYear = years.length > 0 ? Math.max(...years) : 2025;
     const effectiveTempYearRange = tempYearRange ?? [minYear, maxYear];
 
     const uniqueAuthors = Array.from(new Set(books.map((b) => b.author))).sort();
@@ -347,53 +356,43 @@ export class BookSelectionView extends React.Component<Props, State> {
     const chapterCount = selectedBook?.chapters ?? 0;
 
     return (
-      <Box
-        position="relative"
-        pb="80px"
-        maxW="900px"
-        mx="auto"
-        mt={8}
-        bg="white"
-        borderRadius="2xl"
-        boxShadow="lg"
-        p={8}
-      >
+      <Box>
         <Heading
-          size="lg"
-          mb={4}
-          color="green.600"
-          fontWeight="extrabold"
+          fontSize={{ base: 'sm', md: 'md' }}
+          fontWeight="800"
+          letterSpacing="0.12em"
+          textTransform="uppercase"
+          color="#2F9E7E"
         >
           {t.chooseBookHeading}
         </Heading>
 
-        <Button
-          size="sm"
-          mb={4}
-          variant="ghost"
-          onClick={this.props.onBack}
-        >
-          ← {t.back}
-        </Button>
-
-        <Flex
-          mb={4}
-          gap={2}
-          align="center"
-        >
+        <Flex mb={4} gap={3} align="center">
           <Input
             flex="1"
             placeholder={t.searchBooksPlaceholder}
             value={searchQuery}
             onChange={this.handleSearchChange}
-            borderRadius="full"
-            bg="gray.50"
-            borderColor="gray.300"
+            h="56px"
+            borderRadius="20px"
+            bg="white"
+            borderColor="#E5E7EB"
+            boxShadow="0 10px 24px rgba(15, 23, 42, 0.05)"
+            _focusVisible={{
+              borderColor: '#2F9E7E',
+              boxShadow: '0 0 0 3px rgba(47, 158, 126, 0.12)',
+            }}
           />
           <Button
             onClick={this.openFilterModal}
-            backgroundColor="#1e3932"
-            borderRadius="full"
+            h="56px"
+            px={6}
+            borderRadius="20px"
+            background="linear-gradient(90deg, #165B49 0%, #0F6B52 100%)"
+            color="white"
+            fontWeight="700"
+            boxShadow="0 14px 28px rgba(22, 91, 73, 0.20)"
+            _hover={{ transform: 'translateY(-1px)' }}
           >
             {t.filterButton}
           </Button>
@@ -403,43 +402,33 @@ export class BookSelectionView extends React.Component<Props, State> {
 
         <Box
           borderWidth="1px"
-          borderRadius="2xl"
+          borderColor="#ECEAF6"
+          borderRadius="28px"
           overflow="hidden"
           bg="white"
-          boxShadow="md"
+          boxShadow="0 18px 40px rgba(15, 23, 42, 0.08)"
         >
           {!booksLoading && totalBooks > 0 && (
             <Box
               display="flex"
-              px={4}
-              py={2}
+              px={5}
+              py={4}
               borderBottomWidth="1px"
-              bg="gray.100"
+              borderColor="#ECEAF6"
+              bg="#F8FAFC"
               fontWeight="bold"
               fontSize="md"
               color="gray.700"
             >
-              <Box
-                flex="2"
-                cursor="pointer"
-                onClick={() => this.handleSortClick('title')}
-              >
+              <Box flex="2" cursor="pointer" onClick={() => this.handleSortClick('title')}>
                 {t.columnTitle}
                 {this.renderSortIndicator('title')}
               </Box>
-              <Box
-                flex="2"
-                cursor="pointer"
-                onClick={() => this.handleSortClick('author')}
-              >
+              <Box flex="2" cursor="pointer" onClick={() => this.handleSortClick('author')}>
                 {t.columnAuthor}
                 {this.renderSortIndicator('author')}
               </Box>
-              <Box
-                flex="1"
-                cursor="pointer"
-                onClick={() => this.handleSortClick('year')}
-              >
+              <Box flex="1" cursor="pointer" onClick={() => this.handleSortClick('year')}>
                 {t.columnYear}
                 {this.renderSortIndicator('year')}
               </Box>
@@ -447,13 +436,9 @@ export class BookSelectionView extends React.Component<Props, State> {
           )}
 
           {!booksLoading && totalBooks === 0 ? (
-            <Text p={4}>{t.noBooksFiltered}</Text>
+            <Text p={5}>{t.noBooksFiltered}</Text>
           ) : (
-            <Box
-              minH="260px"
-              maxH="500px"
-              overflowY="auto"
-            >
+            <Box minH="260px" maxH="500px" overflowY="auto" px={3} py={3}>
               {paginated.map((book) => {
                 const isSelected = selectedBookId === book.id;
                 return (
@@ -462,46 +447,39 @@ export class BookSelectionView extends React.Component<Props, State> {
                     display="flex"
                     alignItems="center"
                     px={4}
-                    py={3}
-                    borderBottomWidth="1px"
+                    py={4}
+                    mb={3}
+                    borderWidth="1px"
+                    borderColor={isSelected ? '#CFC5F6' : '#ECEAF6'}
                     cursor="pointer"
-                    _hover={{ bg: 'gray.100' }}
-                    bg={isSelected ? 'blue.100' : undefined}
-                    borderRadius="xl"
-                    transition="background 0.2s"
+                    _hover={{
+                      bg: '#F8FAFC',
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 12px 24px rgba(15, 23, 42, 0.06)',
+                    }}
+                    bg={isSelected ? '#F6F1FF' : 'white'}
+                    borderRadius="22px"
+                    transition="all 0.2s"
                     onClick={() => this.handleRowClick(book)}
                   >
                     <Box flex="2">
-                      <Text
-                        fontWeight="bold"
-                        fontSize="lg"
-                        color="gray.800"
-                      >
+                      <Text fontWeight="bold" fontSize="lg" color="gray.800">
                         {book.title}
                       </Text>
-                      <Text
-                        fontSize="sm"
-                        color="gray.500"
-                        fontStyle="italic"
-                      >
+                      <Text fontSize="sm" color="gray.500" fontStyle="italic">
                         {getGenreLabel(book.genre, this.props.language)}
                       </Text>
-                      <Text
-                        fontSize="xs"
-                        color="gray.400"
-                        mt={1}
-                      >
+                      <Text fontSize="xs" color="gray.400" mt={1}>
                         {t.completedChaptersLabel}: {book.completedChapters}/{book.chapters}
                       </Text>
                     </Box>
+
                     <Box flex="2">
-                      <Text
-                        fontWeight="medium"
-                        color="gray.700"
-                      >
+                      <Text fontWeight="medium" color="gray.700">
                         {book.author}
                       </Text>
                     </Box>
+
                     <Box flex="1">
                       <Text color="gray.600">{book.year}</Text>
                     </Box>
@@ -513,52 +491,58 @@ export class BookSelectionView extends React.Component<Props, State> {
         </Box>
 
         {totalBooks > 0 && (
-          <Flex
-            mt={4}
-            justify="space-between"
-            align="center"
-            flexWrap="wrap"
-            gap={3}
-          >
-            <Flex
-              align="center"
-              gap={2}
-            >
+          <Flex mt={4} justify="space-between" align="center" flexWrap="wrap" gap={3}>
+            <Flex align="center" gap={2}>
               <Text fontSize="sm">{this.props.language === 'pl' ? 'Na stronę:' : 'Per page:'}</Text>
               <select
                 value={pageSize}
                 onChange={this.handlePageSizeChange}
-                style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #CBD5E0' }}
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: '14px',
+                  border: '1px solid #D9DDE7',
+                  background: '#FFFFFF',
+                }}
               >
                 {[5, 10, 15, 20].map((n) => (
-                  <option
-                    key={n}
-                    value={n}
-                  >
+                  <option key={n} value={n}>
                     {n}
                   </option>
                 ))}
               </select>
             </Flex>
 
-            <Flex
-              align="center"
-              gap={2}
-            >
+            <Flex align="center" gap={2}>
               <Button
                 size="sm"
-                backgroundColor="#1e3932"
+                h="42px"
+                px={4}
+                borderRadius="16px"
+                variant="outline"
+                borderColor="#D8D1EE"
+                bg="white"
+                color="#6B5AA6"
+                _hover={{ bg: '#F8F6FF' }}
                 onClick={() => this.handlePageChange('prev')}
                 disabled={currentPage === 1}
               >
                 {this.props.language === 'pl' ? 'Poprzednia' : 'Prev'}
               </Button>
+
               <Text fontSize="sm">
                 {this.props.language === 'pl' ? 'Strona' : 'Page'} {currentPage} / {totalPages}
               </Text>
+
               <Button
-                backgroundColor="#1e3932"
                 size="sm"
+                h="42px"
+                px={4}
+                borderRadius="16px"
+                variant="outline"
+                borderColor="#D8D1EE"
+                bg="white"
+                color="#6B5AA6"
+                _hover={{ bg: '#F8F6FF' }}
                 onClick={() => this.handlePageChange('next')}
                 disabled={currentPage === totalPages}
               >
@@ -568,81 +552,44 @@ export class BookSelectionView extends React.Component<Props, State> {
           </Flex>
         )}
 
-        {selectedBookId !== null && (
-          <Box
-            position="fixed"
-            right="24px"
-            bottom="24px"
-            zIndex={1000}
-          >
-            <Flex
-              direction="row"
-              gap={2}
-              bg="white"
-              borderWidth="1px"
-              borderRadius="xl"
-              p={3}
-              boxShadow="md"
-            >
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={this.handlestartGameClick}
-              >
-                {t.startGameLabel}
-              </Button>
-              <Button
-                size="sm"
-                backgroundColor="#1e3932"
-                onClick={this.handleChooseChapterClick}
-              >
-                {t.chooseChapterLabel}
-              </Button>
-            </Flex>
-          </Box>
-        )}
-
         {chapterModalOpen && selectedBook && (
           <Box
             position="fixed"
             inset={0}
             bg="blackAlpha.500"
-            backdropFilter="blur(4px)"
+            backdropFilter="blur(6px)"
             zIndex={1400}
           >
-            <Flex
-              h="100%"
-              align="center"
-              justify="center"
-            >
+            <Flex h="100%" align="center" justify="center" p={4}>
               <Box
                 bg="white"
-                borderRadius="xl"
+                borderRadius="28px"
                 p={6}
                 maxW="sm"
-                w="90%"
+                w="100%"
                 position="relative"
+                border="1px solid #ECEAF6"
+                boxShadow="0 28px 80px rgba(15, 23, 42, 0.16)"
               >
                 <Button
-                  size="xs"
+                  size="sm"
+                  minW="40px"
+                  h="40px"
                   variant="ghost"
                   position="absolute"
-                  right={2}
-                  top={2}
+                  right={3}
+                  top={3}
+                  borderRadius="16px"
                   onClick={this.closeChapterModal}
                 >
                   ✕
                 </Button>
-                <Heading
-                  size="md"
-                  mb={3}
-                >
+
+                <Heading size="md" mb={3} color="#171923">
                   {this.props.language === 'pl' ? 'Wybierz rozdział' : 'Choose chapter'}
                 </Heading>
-                <Text
-                  fontSize="sm"
-                  mb={3}
-                >
+
+                <Text fontSize="sm" mb={4} color="gray.600">
                   {selectedBook.title}
                 </Text>
 
@@ -651,10 +598,11 @@ export class BookSelectionView extends React.Component<Props, State> {
                   onChange={(e) => this.setState({ chapterModalSelectedIndex: parseInt(e.target.value, 10) })}
                   style={{
                     width: '100%',
-                    padding: '8px 10px',
-                    borderRadius: '8px',
-                    border: '1px solid #CBD5E0',
-                    marginBottom: '16px',
+                    padding: '14px 16px',
+                    borderRadius: '18px',
+                    border: '1px solid #D9DDE7',
+                    marginBottom: '18px',
+                    background: '#FFFFFF',
                   }}
                 >
                   {Array.from({ length: chapterCount }).map((_, index) => {
@@ -663,30 +611,39 @@ export class BookSelectionView extends React.Component<Props, State> {
                       this.props.language === 'pl'
                         ? `Rozdział ${index + 1}${index < completedForSelected ? ' (ukończony)' : ''}`
                         : `Chapter ${index + 1}${index < completedForSelected ? ' (completed)' : ''}`;
+
                     return (
-                      <option
-                        key={index}
-                        value={index}
-                        disabled={!isUnlocked}
-                      >
+                      <option key={index} value={index} disabled={!isUnlocked}>
                         {label}
                       </option>
                     );
                   })}
                 </select>
 
-                <Flex
-                  justify="flex-end"
-                  gap={3}
-                >
+                <Flex justify="flex-end" gap={3}>
                   <Button
+                    h="48px"
+                    px={5}
+                    borderRadius="18px"
                     variant="outline"
+                    borderColor="#D8D1EE"
+                    color="#6B5AA6"
+                    bg="white"
+                    _hover={{ bg: '#F8F6FF' }}
                     onClick={this.closeChapterModal}
                   >
                     {this.props.language === 'pl' ? 'Anuluj' : 'Cancel'}
                   </Button>
+
                   <Button
-                    backgroundColor="#1e3932"
+                    h="48px"
+                    px={5}
+                    borderRadius="18px"
+                    background="linear-gradient(90deg, #165B49 0%, #0F6B52 100%)"
+                    color="white"
+                    fontWeight="700"
+                    boxShadow="0 14px 28px rgba(22, 91, 73, 0.20)"
+                    _hover={{ transform: 'translateY(-1px)' }}
                     onClick={this.confirmChapterChoice}
                   >
                     {this.props.language === 'pl' ? 'Wybierz' : 'Select'}
@@ -697,66 +654,61 @@ export class BookSelectionView extends React.Component<Props, State> {
           </Box>
         )}
 
-        {/* Filtry zostają jak były — skrócone dla czytelności, ale możesz wkleić swoje 1:1 */}
         {filterModalOpen && (
           <Box
             position="fixed"
             inset={0}
             bg="blackAlpha.500"
-            backdropFilter="blur(4px)"
+            backdropFilter="blur(6px)"
             zIndex={1400}
           >
-            <Flex
-              h="100%"
-              align="center"
-              justify="center"
-            >
+            <Flex h="100%" align="center" justify="center" p={4}>
               <Box
                 bg="white"
-                borderRadius="xl"
+                borderRadius="28px"
                 p={6}
                 maxW="lg"
-                w="95%"
+                w="100%"
                 position="relative"
+                border="1px solid #ECEAF6"
+                boxShadow="0 28px 80px rgba(15, 23, 42, 0.16)"
               >
                 <Button
-                  size="xs"
+                  size="sm"
+                  minW="40px"
+                  h="40px"
                   variant="ghost"
                   position="absolute"
-                  right={2}
-                  top={2}
+                  right={3}
+                  top={3}
+                  borderRadius="16px"
                   onClick={this.closeFilterModal}
                 >
                   ✕
                 </Button>
-                <Heading
-                  size="md"
-                  mb={4}
-                >
+
+                <Heading size="md" mb={4}>
                   {this.props.language === 'pl' ? 'Filtry' : 'Filters'}
                 </Heading>
 
                 <Box mb={4}>
-                  <Text
-                    fontSize="sm"
-                    fontWeight="semibold"
-                    mb={2}
-                  >
+                  <Text fontSize="sm" fontWeight="semibold" mb={2}>
                     {this.props.language === 'pl' ? 'Autorzy' : 'Authors'}
                   </Text>
-                  <Flex
-                    wrap="wrap"
-                    gap={2}
-                  >
+                  <Flex wrap="wrap" gap={2}>
                     {uniqueAuthors.map((author) => (
                       <label
                         key={author}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '4px',
-                          accentColor: '#1e3932',
+                          gap: '6px',
+                          padding: '8px 12px',
+                          borderRadius: '999px',
+                          border: '1px solid #E7E2F5',
+                          background: tempSelectedAuthors.includes(author) ? '#F6F1FF' : '#FFFFFF',
                           fontSize: '0.875rem',
+                          accentColor: '#165B49',
                         }}
                       >
                         <input
@@ -771,26 +723,23 @@ export class BookSelectionView extends React.Component<Props, State> {
                 </Box>
 
                 <Box mb={4}>
-                  <Text
-                    fontSize="sm"
-                    fontWeight="semibold"
-                    mb={2}
-                  >
+                  <Text fontSize="sm" fontWeight="semibold" mb={2}>
                     {this.props.language === 'pl' ? 'Gatunki' : 'Genres'}
                   </Text>
-                  <Flex
-                    wrap="wrap"
-                    gap={2}
-                  >
+                  <Flex wrap="wrap" gap={2}>
                     {uniqueGenres.map((genre) => (
                       <label
                         key={genre}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '4px',
+                          gap: '6px',
+                          padding: '8px 12px',
+                          borderRadius: '999px',
+                          border: '1px solid #E7E2F5',
+                          background: tempSelectedGenres.includes(genre) ? '#F6F1FF' : '#FFFFFF',
                           fontSize: '0.875rem',
-                          accentColor: '#1e3932',
+                          accentColor: '#165B49',
                         }}
                       >
                         <input
@@ -805,47 +754,52 @@ export class BookSelectionView extends React.Component<Props, State> {
                 </Box>
 
                 <Box mb={6}>
-                  <Text
-                    fontSize="sm"
-                    fontWeight="semibold"
-                    mb={2}
-                  >
+                  <Text fontSize="sm" fontWeight="semibold" mb={2}>
                     {this.props.language === 'pl' ? 'Rok wydania' : 'Publication year'}
                   </Text>
-                  <Text
-                    fontSize="xs"
-                    mb={2}
-                  >
+                  <Text fontSize="xs" mb={2}>
                     {effectiveTempYearRange[0]} – {effectiveTempYearRange[1]}
                   </Text>
-                  <Text
-                    fontSize="xs"
-                    color="gray.500"
-                  >
+                  <Text fontSize="xs" color="gray.500">
                     {this.props.language === 'pl' ? 'Zakres ustawiasz suwakami.' : 'Adjust range with sliders.'}
                   </Text>
                 </Box>
 
-                <Flex
-                  justify="space-between"
-                  gap={3}
-                  mt={4}
-                >
+                <Flex justify="space-between" gap={3} mt={4}>
                   <Button
+                    h="48px"
+                    px={5}
+                    borderRadius="18px"
                     variant="ghost"
                     onClick={this.clearFilters}
                   >
                     {this.props.language === 'pl' ? 'Usuń filtry' : 'Clear filters'}
                   </Button>
+
                   <Flex gap={3}>
                     <Button
+                      h="48px"
+                      px={5}
+                      borderRadius="18px"
                       variant="outline"
+                      borderColor="#D8D1EE"
+                      color="#6B5AA6"
+                      bg="white"
+                      _hover={{ bg: '#F8F6FF' }}
                       onClick={this.closeFilterModal}
                     >
                       {this.props.language === 'pl' ? 'Anuluj' : 'Cancel'}
                     </Button>
+
                     <Button
-                      backgroundColor="#1e3932"
+                      h="48px"
+                      px={5}
+                      borderRadius="18px"
+                      background="linear-gradient(90deg, #165B49 0%, #0F6B52 100%)"
+                      color="white"
+                      fontWeight="700"
+                      boxShadow="0 14px 28px rgba(22, 91, 73, 0.20)"
+                      _hover={{ transform: 'translateY(-1px)' }}
                       onClick={this.applyFilterChanges}
                     >
                       {this.props.language === 'pl' ? 'Filtruj' : 'Apply'}

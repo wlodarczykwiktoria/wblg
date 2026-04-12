@@ -25,9 +25,7 @@ function splitIntoLines(words: RiddleWord[]): RiddleWord[][] {
 
   words.forEach((w) => {
     const hasNewline = w.value.includes('\n');
-
     const cleanedValue = w.value.replace(/\n+/g, '');
-
     const cleanedWord: RiddleWord = { ...w, value: cleanedValue };
 
     current.push(cleanedWord);
@@ -50,12 +48,12 @@ function splitIntoLines(words: RiddleWord[]): RiddleWord[][] {
 }
 
 const PAIR_COLORS = [
-  { bg: 'purple.200', badgeBg: 'purple.500' },
-  { bg: 'red.200', badgeBg: 'red.500' },
-  { bg: 'blue.200', badgeBg: 'blue.500' },
-  { bg: 'green.200', badgeBg: 'green.500' },
-  { bg: 'purple.200', badgeBg: 'purple.500' },
-  { bg: 'pink.200', badgeBg: 'pink.500' },
+  { bg: '#EEE7FF', badgeBg: '#7C5CE6', border: '#D8D1EE', text: '#4B4572' },
+  { bg: '#FCE7EC', badgeBg: '#D6456D', border: '#F4C5D2', text: '#7F2240' },
+  { bg: '#E7F1FF', badgeBg: '#3B82F6', border: '#C7DCF9', text: '#244E8F' },
+  { bg: '#E6F7EF', badgeBg: '#23A26D', border: '#BFE8D4', text: '#1B6E4A' },
+  { bg: '#FFF2E7', badgeBg: '#F08C3A', border: '#F7D1B2', text: '#8A4D18' },
+  { bg: '#FDEBFF', badgeBg: '#C056E1', border: '#EFC5F8', text: '#7A2B95' },
 ];
 
 export const SwitchGame: React.FC<Props> = ({ riddle, selectedPairs, openWordId, onWordClick }) => {
@@ -75,17 +73,19 @@ export const SwitchGame: React.FC<Props> = ({ riddle, selectedPairs, openWordId,
     <Box mt={4}>
       <Box
         bg="white"
-        borderRadius="2xl"
-        boxShadow="md"
-        px={10}
-        py={8}
+        borderRadius="32px"
+        boxShadow="0 18px 44px rgba(15, 23, 42, 0.08)"
+        border="1px solid #ECEAF6"
+        px={{ base: 6, md: 10 }}
+        py={{ base: 6, md: 8 }}
       >
-        <VStack align="flex-start">
+        <VStack align="flex-start" gap={4}>
           {lines.map((line, lineIdx) => (
             <Text
               key={lineIdx}
-              fontSize="lg"
-              lineHeight="1.8"
+              fontSize={{ base: 'lg', md: 'xl' }}
+              lineHeight="2"
+              color="gray.800"
             >
               {line.map((w, indexInLine) => {
                 const wordIndex = globalIndex++;
@@ -93,12 +93,10 @@ export const SwitchGame: React.FC<Props> = ({ riddle, selectedPairs, openWordId,
 
                 const pairNumber = pairsByWordId[w.id];
                 const pairIdx = pairNumber ? pairNumber - 1 : null;
-                const colorCfg = pairIdx !== null ? PAIR_COLORS[pairIdx] : null;
+                const colorCfg = pairIdx !== null ? PAIR_COLORS[pairIdx % PAIR_COLORS.length] : null;
 
                 const isInPair = pairNumber != null;
                 const isOpen = !isInPair && openWordId === w.id;
-
-                const bg = isInPair ? colorCfg?.bg : isOpen ? 'gray.100' : 'transparent';
 
                 const displayValue = w.value.replace(/\n+/g, '');
 
@@ -117,29 +115,42 @@ export const SwitchGame: React.FC<Props> = ({ riddle, selectedPairs, openWordId,
                         isLastWord
                           ? undefined
                           : () => {
-                              onWordClick(w.id, wordIndex);
-                            }
+                            onWordClick(w.id, wordIndex);
+                          }
                       }
                       borderWidth="1px"
-                      borderColor={isOpen ? 'gray.400' : 'transparent'}
-                      bg={bg}
-                      borderRadius="md"
-                      px={1}
+                      borderColor={isInPair ? colorCfg?.border : isOpen ? '#B9C1D9' : 'transparent'}
+                      bg={isInPair ? colorCfg?.bg : isOpen ? '#F8FAFC' : 'transparent'}
+                      color={isInPair ? colorCfg?.text : 'inherit'}
+                      borderRadius="14px"
+                      px={2}
+                      py={1}
                       display="inline"
                       cursor={isLastWord ? 'default' : 'pointer'}
+                      transition="all 0.2s"
+                      _hover={
+                        isLastWord
+                          ? undefined
+                          : {
+                            bg: isInPair ? colorCfg?.bg : '#F8FAFC',
+                            borderColor: isInPair ? colorCfg?.border : '#D8D1EE',
+                          }
+                      }
                     >
                       {pairNumber && (
                         <Box
                           position="absolute"
-                          top="-1.1rem"
+                          top="-1.15rem"
                           left="50%"
                           transform="translateX(-50%)"
                           fontSize="xs"
+                          fontWeight="800"
                           borderRadius="full"
-                          px={2}
+                          px={2.5}
                           py={0.5}
                           bg={colorCfg?.badgeBg ?? 'gray.700'}
                           color="white"
+                          boxShadow="0 8px 18px rgba(15, 23, 42, 0.14)"
                         >
                           {pairNumber}
                         </Box>

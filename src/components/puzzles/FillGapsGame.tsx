@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Button, Flex, Text, VStack, Wrap, WrapItem } from '@chakra-ui/react';
+import { Box, Text, VStack, Wrap, WrapItem } from '@chakra-ui/react';
 import type { Riddle, RiddleOption } from '../../api/types';
 import { type Language, translations } from '../../i18n';
 
@@ -11,6 +11,7 @@ type Props = {
   initialAnswers: AnswersState;
   gapOffset?: number;
   onChange(answers: AnswersState): void;
+  onReset?(): void;
 };
 
 type State = {
@@ -28,7 +29,6 @@ export class FillGapsGame extends React.Component<Props, State> {
     this.handleDragStartWord = this.handleDragStartWord.bind(this);
     this.handleDropOnGap = this.handleDropOnGap.bind(this);
     this.handleDragOverGap = this.handleDragOverGap.bind(this);
-    this.handleReset = this.handleReset.bind(this);
   }
 
   componentDidUpdate(prevProps: Props) {
@@ -77,16 +77,6 @@ export class FillGapsGame extends React.Component<Props, State> {
     e.preventDefault();
   }
 
-  handleReset() {
-    this.updateAnswers((prev) => {
-      const cleared: AnswersState = {};
-      Object.keys(prev).forEach((gapId) => {
-        cleared[gapId] = null;
-      });
-      return cleared;
-    });
-  }
-
   renderGapContent(gapId: string): string {
     const wordId = this.state.answers[gapId];
     if (!wordId) return '_____';
@@ -104,15 +94,16 @@ export class FillGapsGame extends React.Component<Props, State> {
     let localGapCounter = 0;
 
     return (
-      <VStack align="stretch">
+      <VStack align="stretch" gap={6}>
         <Box
           bg="white"
-          borderRadius="2xl"
-          boxShadow="md"
-          px={10}
-          py={8}
+          borderRadius="32px"
+          boxShadow="0 18px 50px rgba(15, 23, 42, 0.10)"
+          border="1px solid #ECEAF6"
+          px={{ base: 6, md: 10 }}
+          py={{ base: 6, md: 8 }}
           whiteSpace="pre-wrap"
-          lineHeight="1.8"
+          lineHeight="1.9"
         >
           {parts.map((part, index) => {
             if (part.type === 'text') {
@@ -120,6 +111,8 @@ export class FillGapsGame extends React.Component<Props, State> {
                 <Text
                   key={`text-${index}`}
                   as="span"
+                  fontSize={{ base: 'lg', md: '2xl' }}
+                  color="gray.800"
                 >
                   {part.value}
                 </Text>
@@ -149,7 +142,7 @@ export class FillGapsGame extends React.Component<Props, State> {
                 display="inline-flex"
                 justifyContent="center"
                 alignItems="center"
-                fontSize="md"
+                fontSize={{ base: 'md', md: 'lg' }}
                 fontWeight="normal"
                 color="green.700"
               >
@@ -161,19 +154,22 @@ export class FillGapsGame extends React.Component<Props, State> {
 
         <Box
           bg="white"
-          borderRadius="2xl"
-          boxShadow="md"
-          px={8}
-          py={8}
+          borderRadius="28px"
+          boxShadow="0 12px 32px rgba(15, 23, 42, 0.08)"
+          border="1px solid #ECEAF6"
+          px={{ base: 6, md: 8 }}
+          py={{ base: 6, md: 7 }}
         >
           <Text
-            mb={3}
+            mb={4}
             fontWeight="semibold"
+            textAlign="center"
+            color="gray.700"
           >
             {t.chooseWordsLabel}
           </Text>
 
-          <Wrap justify="center">
+          <Wrap justify="center" gap={3}>
             {availableOptions.map((opt) => (
               <WrapItem key={opt.id}>
                 <Box
@@ -185,15 +181,15 @@ export class FillGapsGame extends React.Component<Props, State> {
                   borderWidth="1px"
                   borderRadius="full"
                   bg="gray.50"
-                  boxShadow="none"
+                  borderColor="gray.200"
                   cursor="grab"
                   userSelect="none"
                   fontSize="md"
-                  fontWeight="normal"
+                  fontWeight="500"
                   color="gray.800"
                   _hover={{ bg: 'gray.100', transform: 'translateY(-2px)' }}
                   _active={{ transform: 'translateY(0)' }}
-                  transition="background 0.2s"
+                  transition="all 0.2s"
                 >
                   {opt.label}
                 </Box>
@@ -202,15 +198,6 @@ export class FillGapsGame extends React.Component<Props, State> {
             {availableOptions.length === 0 && <Text>—</Text>}
           </Wrap>
         </Box>
-
-        <Flex justify="flex-start">
-          <Button
-            onClick={this.handleReset}
-            variant="outline"
-          >
-            {t.resetLabel}
-          </Button>
-        </Flex>
       </VStack>
     );
   }

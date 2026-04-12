@@ -1,28 +1,23 @@
-// src/components/App.tsx
-
 import React from 'react';
-import { Box, Button, Container, Flex, Heading, NativeSelect, Spacer, Input, Text, Spinner } from '@chakra-ui/react';
+import { Box, Button, Container, Flex, Heading, Input, NativeSelect, Spinner, Text } from '@chakra-ui/react';
 import { type Language, translations } from './i18n.ts';
 import type { GameResults } from './gameTypes.ts';
 import type { Book, GameType } from './api/modelV2.ts';
 import { type BookProgress, resetProgressForBook, updateProgressForChapter } from './storage/progressStorage.ts';
 import { ApiClient } from './api/ApiClient.ts';
 import { HomeView } from './components/HomeView.tsx';
-import { GameSelectionView } from './components/GameSelectionView.tsx';
-import { BookSelectionView } from './components/BookSelectionView.tsx';
 import { ProgressView } from './components/ProgressView.tsx';
 import { SpellcheckView } from './components/SpellcheckView.tsx';
 import { PuzzleView } from './components/PuzzleView.tsx';
 import { ResultsScreen } from './components/ResultsScreen.tsx';
-import { GameCode, type Riddle, type Extract } from './api/types.ts';
+import { type Extract, GameCode, type Riddle } from './api/types.ts';
 import { CrossoutView } from './components/CrossoutView.tsx';
 import { AnagramView } from './components/AnagramView.tsx';
 import { SwitchView } from './components/SwitchView.tsx';
 import { GAME_CODE_BY_TYPE, GAME_TYPES } from './components/ui/consts.ts';
 import { ChoiceView } from './components/ChoiceView.tsx';
-import { MdLibraryBooks } from 'react-icons/md';
 
-type Route = 'home' | 'selectGame' | 'selectBook' | 'puzzle' | 'results' | 'progress';
+type Route = 'home' | 'puzzle' | 'results' | 'progress';
 
 type AppState = {
   route: Route;
@@ -48,7 +43,6 @@ type AppState = {
   creatingSession: boolean;
 };
 
-//TODO move to some global service one day
 export function countGaps(riddle: Riddle): number {
   return riddle.prompt.parts.filter((p) => p.type === 'gap').length;
 }
@@ -87,11 +81,9 @@ export class App extends React.Component<unknown, AppState> {
 
     this.apiClient = new ApiClient('https://wblg-backend-1007953962746.europe-west1.run.app');
 
-    this.handleChooseGameClick = this.handleChooseGameClick.bind(this);
-    this.handleChooseBookClick = this.handleChooseBookClick.bind(this);
     this.handleGameSelected = this.handleGameSelected.bind(this);
     this.handleBookSelected = this.handleBookSelected.bind(this);
-    this.afterSelection = this.afterSelection.bind(this);
+    this.startSelectedGame = this.startSelectedGame.bind(this);
     this.handleBackToHome = this.handleBackToHome.bind(this);
     this.handleLanguageChange = this.handleLanguageChange.bind(this);
     this.handleFinishLevel = this.handleFinishLevel.bind(this);
@@ -165,17 +157,6 @@ export class App extends React.Component<unknown, AppState> {
     this.setState({ language: lang });
   }
 
-  handleChooseGameClick(): void {
-    this.setState({ route: 'selectGame' });
-  }
-
-  // ✅ refresh books przy przejściu do listy książek
-  handleChooseBookClick(): void {
-    this.setState({ route: 'selectBook' }, () => {
-      void this.loadBooksAndProgress();
-    });
-  }
-
   handleGameSelected(gameId: number | 'random', type: GameType | 'random', code: GameCode | null): void {
     const chosenId = gameId === 'random' ? 1 : gameId;
     const chosenType: GameType = type === 'random' ? this.getRandomGameType() : type;
@@ -183,26 +164,22 @@ export class App extends React.Component<unknown, AppState> {
     const chosenCode: GameCode =
       type === 'random' ? GAME_CODE_BY_TYPE[chosenType] : (code ?? GAME_CODE_BY_TYPE[chosenType]);
 
-    this.setState(
-      {
-        selectedGameId: chosenId as number,
-        selectedGameType: chosenType,
-        selectedGameCode: chosenCode,
-      },
-      this.afterSelection,
-    );
+    this.setState({
+      selectedGameId: chosenId as number,
+      selectedGameType: chosenType,
+      selectedGameCode: chosenCode,
+      route: 'home',
+    });
   }
 
   handleBookSelected(bookId: number, chapterIndex: number): void {
-    this.setState(
-      {
-        selectedBookId: bookId,
-        currentChapterIndex: chapterIndex,
-        selectedBookExtracts: [],
-        selectedBookTotalChapters: null,
-      },
-      this.afterSelection,
-    );
+    this.setState({
+      selectedBookId: bookId,
+      currentChapterIndex: chapterIndex,
+      selectedBookExtracts: [],
+      selectedBookTotalChapters: null,
+      route: 'home',
+    });
   }
 
   private clampChapterIndex(index: number, total: number): number {
@@ -210,43 +187,30 @@ export class App extends React.Component<unknown, AppState> {
     return Math.max(0, Math.min(index, total - 1));
   }
 
-  async afterSelection(): Promise<void> {
+  async startSelectedGame(): Promise<void> {
     const { selectedGameType, selectedBookId, selectedGameCode, currentChapterIndex } = this.state;
+    if (!selectedGameType || selectedBookId === null) return;
 
-    if (selectedGameType && selectedBookId !== null) {
-      if (selectedGameCode) {
-        // void this.apiClient.fetchChapterConfig(selectedBookId, currentChapterIndex, selectedGameCode);
-      }
-
-      const extracts = await this.apiClient.getExtracts(selectedBookId);
-      const total = extracts.length;
-
-      const safeIndex = this.clampChapterIndex(currentChapterIndex, total);
-      const chosenExtract = extracts[safeIndex] ?? null;
-
-      this.setState({
-        selectedBookExtracts: extracts,
-        selectedBookTotalChapters: total,
-        currentChapterIndex: safeIndex,
-        selectedExtractId: chosenExtract ? chosenExtract.id : null,
-        route: 'puzzle',
-        results: null,
-      });
-
-      return;
+    if (selectedGameCode) {
+      // void this.apiClient.fetchChapterConfig(selectedBookId, currentChapterIndex, selectedGameCode);
     }
 
-    if (!selectedGameType) {
-      this.setState({ route: 'selectGame' });
-      return;
-    }
+    const extracts = await this.apiClient.getExtracts(selectedBookId);
+    const total = extracts.length;
 
-    if (selectedBookId === null) {
-      this.setState({ route: 'selectBook' });
-    }
+    const safeIndex = this.clampChapterIndex(currentChapterIndex, total);
+    const chosenExtract = extracts[safeIndex] ?? null;
+
+    this.setState({
+      selectedBookExtracts: extracts,
+      selectedBookTotalChapters: total,
+      currentChapterIndex: safeIndex,
+      selectedExtractId: chosenExtract ? chosenExtract.id : null,
+      route: 'puzzle',
+      results: null,
+    });
   }
 
-  // ✅ refresh books też przy powrocie na home (żeby nie było “stare”)
   handleBackToHome(): void {
     this.setState(
       {
@@ -295,7 +259,7 @@ export class App extends React.Component<unknown, AppState> {
       this.setState({ route: 'home' });
       return;
     }
-    void this.afterSelection();
+    void this.startSelectedGame();
   }
 
   handleNextExtract(): void {
@@ -308,7 +272,7 @@ export class App extends React.Component<unknown, AppState> {
     if (total > 0 && nextIndex >= total) return;
 
     if (this.state.selectedBookExtracts.length === 0) {
-      this.setState({ currentChapterIndex: nextIndex }, () => void this.afterSelection());
+      this.setState({ currentChapterIndex: nextIndex }, () => void this.startSelectedGame());
       return;
     }
 
@@ -323,11 +287,10 @@ export class App extends React.Component<unknown, AppState> {
     });
   }
 
-  // ✅ KLUCZ: po powrocie z results odśwież books
   handleBackToLibraryFromResults(): void {
     this.setState(
       {
-        route: 'selectBook',
+        route: 'home',
         selectedBookId: null,
         selectedExtractId: null,
         selectedGameId: null,
@@ -399,6 +362,166 @@ export class App extends React.Component<unknown, AppState> {
     return this.state.currentChapterIndex + 1 < total;
   }
 
+  private getSelectedGameLabel(): string {
+    const { language, selectedGameType } = this.state;
+
+    if (!selectedGameType) {
+      return language === 'pl' ? 'Brak gry' : 'No game';
+    }
+
+    const labels: Record<string, { pl: string; en: string }> = {
+      'fill-gaps': { pl: 'Uzupełnianie luk', en: 'Fill the gaps' },
+      spellcheck: { pl: 'Literówki', en: 'Spellcheck' },
+      crossout: { pl: 'Skreślanie', en: 'Crossout' },
+      anagram: { pl: 'Anagram', en: 'Anagram' },
+      switch: { pl: 'Zamiana', en: 'Switch' },
+      choice: { pl: 'Wybór', en: 'Choice' },
+      random: { pl: 'Losowa gra', en: 'Random game' },
+    };
+
+    const entry = labels[selectedGameType];
+    if (!entry) return selectedGameType;
+
+    return language === 'pl' ? entry.pl : entry.en;
+  }
+
+  private getSelectedBookLabel(): string {
+    const { language, books, selectedBookId } = this.state;
+
+    if (selectedBookId === null) {
+      return language === 'pl' ? 'Brak książki' : 'No book';
+    }
+
+    const selectedBook = books.find((book) => book.id === selectedBookId);
+    return selectedBook?.title ?? (language === 'pl' ? 'Brak książki' : 'No book');
+  }
+
+  private renderHomeFooter(): React.ReactNode {
+    const { route, language, selectedGameType, selectedBookId } = this.state;
+
+    if (route !== 'home') return null;
+
+    const canStartGame = selectedGameType !== null && selectedBookId !== null;
+
+    return (
+      <Box
+        mt={{ base: 8, md: 14 }}
+        w="100%"
+        bg="white"
+        boxShadow="0 -4px 30px rgba(15, 23, 42, 0.04)"
+      >
+        <Container
+          maxW="100%"
+          w="100%"
+          px={{ base: 4, md: 8 }}
+          py={{ base: 6, md: 8 }}
+        >
+          <Flex
+            direction={{ base: 'column', xl: 'row' }}
+            align={{ base: 'stretch', xl: 'center' }}
+            justify="center"
+            gap={{ base: 5, md: 6 }}
+            w="100%"
+          >
+            <Box
+              bg="#F7F7FB"
+              borderRadius="24px"
+              px={6}
+              py={5}
+              flex={{ base: 'unset', xl: '0 0 320px' }}
+              minW={{ base: 'auto', xl: '320px' }}
+            >
+              <Text
+                color="gray.600"
+                fontSize={{ base: 'sm', md: 'md' }}
+                lineHeight="1.7"
+              >
+                💡{' '}
+                {language === 'pl'
+                  ? 'Możesz zmienić swój wybór w dowolnym momencie przed rozpoczęciem.'
+                  : 'You can change your choices anytime before starting.'}
+              </Text>
+            </Box>
+
+            <Flex
+              direction="column"
+              align="center"
+              justify="center"
+              flex="1"
+              minW={0}
+            >
+              <Button
+                size="lg"
+                w={{ base: '100%', md: '520px' }}
+                maxW="100%"
+                py={8}
+                borderRadius="999px"
+                background="linear-gradient(90deg, #165B49 0%, #0F6B52 100%)"
+                color="white"
+                onClick={this.startSelectedGame}
+                disabled={!canStartGame}
+                opacity={canStartGame ? 1 : 0.55}
+                fontSize={{ base: 'xl', md: '2xl' }}
+                fontWeight="800"
+                boxShadow={canStartGame ? '0 20px 45px rgba(22, 91, 73, 0.28)' : 'none'}
+                _hover={{
+                  transform: canStartGame ? 'translateY(-1px)' : 'none',
+                }}
+              >
+                ✨ {language === 'pl' ? 'Rozpocznij grę' : 'Start game'}
+              </Button>
+            </Flex>
+
+            <Box
+              bg="#F7F7FB"
+              borderRadius="24px"
+              px={6}
+              py={5}
+              flex={{ base: 'unset', xl: '0 0 320px' }}
+              minW={{ base: 'auto', xl: '320px' }}
+            >
+              <Text
+                fontWeight="800"
+                color="#171923"
+                mb={3}
+              >
+                {language === 'pl' ? 'Twój wybór' : 'Your setup'}
+              </Text>
+
+              <Flex
+                wrap="wrap"
+                gap={2}
+              >
+                <Box
+                  py={2}
+                  borderRadius="full"
+                  bg="purple.50"
+                  color="purple.700"
+                  fontWeight="700"
+                  fontSize="sm"
+                >
+                  🎮 {this.getSelectedGameLabel()}
+                </Box>
+
+                <Box
+                  px={4}
+                  py={2}
+                  borderRadius="full"
+                  bg="green.50"
+                  color="green.700"
+                  fontWeight="700"
+                  fontSize="sm"
+                >
+                  📘 {this.getSelectedBookLabel()}
+                </Box>
+              </Flex>
+            </Box>
+          </Flex>
+        </Container>
+      </Box>
+    );
+  }
+
   renderCurrentView() {
     const {
       route,
@@ -415,35 +538,16 @@ export class App extends React.Component<unknown, AppState> {
     if (route === 'home') {
       return (
         <HomeView
-          language={language}
-          onChooseGame={this.handleChooseGameClick}
-          onChooseBook={this.handleChooseBookClick}
-        />
-      );
-    }
-
-    if (route === 'selectGame') {
-      return (
-        <GameSelectionView
-          apiClient={this.apiClient}
-          language={language}
-          onGameSelected={this.handleGameSelected}
-          onBack={this.handleBackToHome}
-        />
-      );
-    }
-
-    if (route === 'selectBook') {
-      return (
-        <BookSelectionView
           apiClient={this.apiClient}
           language={language}
           books={books}
           booksLoading={booksLoading}
           progress={progress}
+          selectedGameType={selectedGameType}
+          selectedBookId={selectedBookId}
+          onGameSelected={this.handleGameSelected}
           onBookSelected={this.handleBookSelected}
           onResetBookProgress={this.handleResetBookProgress}
-          onBack={this.handleBackToHome}
         />
       );
     }
@@ -567,9 +671,16 @@ export class App extends React.Component<unknown, AppState> {
 
     return (
       <HomeView
+        apiClient={this.apiClient}
         language={language}
-        onChooseGame={this.handleChooseGameClick}
-        onChooseBook={this.handleChooseBookClick}
+        books={books}
+        booksLoading={booksLoading}
+        progress={progress}
+        selectedGameType={selectedGameType}
+        selectedBookId={selectedBookId}
+        onGameSelected={this.handleGameSelected}
+        onBookSelected={this.handleBookSelected}
+        onResetBookProgress={this.handleResetBookProgress}
       />
     );
   }
@@ -604,7 +715,7 @@ export class App extends React.Component<unknown, AppState> {
           <Heading
             size="md"
             mb={3}
-            color="green.600"
+            color="#0F6B52"
             fontWeight="extrabold"
           >
             {title}
@@ -684,126 +795,129 @@ export class App extends React.Component<unknown, AppState> {
   }
 
   render() {
-    const { language, showInterruptGameModal, showNickModal } = this.state;
+    const { language, showInterruptGameModal, showNickModal, route } = this.state;
     const t = translations[language];
+
+    const isHome = route === 'home';
 
     return (
       <div>
-        <Box
-          as="nav"
-          position="sticky"
-          top="0"
-          zIndex={1000}
-          bg="white"
-          py={3}
-          px={6}
-          borderBottom="1px solid #e2e8f0"
-          boxShadow="0 2px 8px 0 rgba(0,0,0,0.03)"
-          borderRadius="0 0 24px 24px"
-        >
-          <Flex align="center">
-            <MdLibraryBooks
-              size={32}
-              fill="#1e3932"
-            />
-            <Heading
-              marginLeft={4}
-              size="md"
+        {route === 'home' && (
+          <Box
+            as="nav"
+            position={{ base: 'sticky', md: 'absolute' }}
+            top={{ base: 0, md: 5 }}
+            right={{ base: 'auto', md: 6 }}
+            left={{ base: 0, md: 'auto' }}
+            zIndex={1000}
+            bg={{ base: 'white', md: 'whiteAlpha.900' }}
+            backdropFilter={{ base: 'none', md: 'blur(10px)' }}
+            py={{ base: 3, md: 3 }}
+            px={{ base: 4, md: 4 }}
+            border={{ base: 'none', md: '1px solid #e9edf3' }}
+            borderBottom={{ base: '1px solid #e2e8f0', md: 'none' }}
+            boxShadow={{ base: '0 2px 8px 0 rgba(0,0,0,0.03)', md: '0 10px 30px rgba(15, 23, 42, 0.06)' }}
+            borderRadius={{ base: '0 0 20px 20px', md: '24px' }}
+            w={{ base: '100%', md: 'auto' }}
+          >
+            <Flex
+              align="center"
+              gap={3}
+              justify={{ base: 'flex-end', md: 'center' }}
             >
-              {t.appTitle}
-            </Heading>
-            <Spacer />
-            <Button
-              size="sm"
-              mr={3}
-              variant="outline"
-              onClick={this.handleOpenProgress}
-            >
-              {t.progressNavLabel}
-            </Button>
-            <NativeSelect.Root
-              size="sm"
-              width="120px"
-            >
-              <NativeSelect.Field
-                value={language}
-                onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
-                  this.handleLanguageChange(event.target.value as Language)
-                }
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={this.handleOpenProgress}
               >
-                <option value="pl">Polski</option>
-                <option value="en">English</option>
-              </NativeSelect.Field>
-              <NativeSelect.Indicator />
-            </NativeSelect.Root>
-          </Flex>
-        </Box>
+                {t.progressNavLabel}
+              </Button>
 
+              <NativeSelect.Root
+                size="sm"
+                width="120px"
+              >
+                <NativeSelect.Field
+                  value={language}
+                  onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
+                    this.handleLanguageChange(event.target.value as Language)
+                  }
+                >
+                  <option value="pl">Polski</option>
+                  <option value="en">English</option>
+                </NativeSelect.Field>
+                <NativeSelect.Indicator />
+              </NativeSelect.Root>
+            </Flex>
+          </Box>
+        )}
         <Container
-          maxW="6xl"
+          maxW={isHome ? 'full' : '6xl'}
           p={0}
           position="relative"
         >
           <Box
-            maxW="5xl"
+            maxW={isHome ? 'none' : '5xl'}
             mx="auto"
           >
-            <Box mt={4}>{this.renderCurrentView()}</Box>
+            <Box>{this.renderCurrentView()}</Box>
+          </Box>
 
-            {showInterruptGameModal && (
+          {this.renderHomeFooter()}
+
+          {showInterruptGameModal && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                backdropFilter: 'blur(4px)',
+                zIndex: 1500,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               <div
                 style={{
-                  position: 'fixed',
-                  inset: 0,
-                  backgroundColor: 'rgba(0,0,0,0.5)',
-                  backdropFilter: 'blur(4px)',
-                  zIndex: 1500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  backgroundColor: 'white',
+                  borderRadius: '16px',
+                  padding: '24px',
+                  maxWidth: '400px',
+                  width: '90%',
                 }}
               >
-                <div
-                  style={{
-                    backgroundColor: 'white',
-                    borderRadius: '16px',
-                    padding: '24px',
-                    maxWidth: '400px',
-                    width: '90%',
-                  }}
-                >
-                  <h2 style={{ fontSize: '18px', marginBottom: '8px' }}>
-                    {language === 'pl' ? 'Przerwać aktualną grę?' : 'Interrupt current game?'}
-                  </h2>
-                  <p style={{ marginBottom: '16px' }}>
-                    {language === 'pl'
-                      ? 'Gra zostanie przerwana, a obecny postęp w tej rundzie zostanie utracony.'
-                      : 'The current game will be stopped and your in-progress state for this round will be lost.'}
-                  </p>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => this.setState({ showInterruptGameModal: false })}
-                    >
-                      {language === 'pl' ? 'Anuluj' : 'Cancel'}
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        this.setState({
-                          showInterruptGameModal: false,
-                          route: 'progress',
-                        })
-                      }
-                    >
-                      {language === 'pl' ? 'Przejdź do postępu' : 'Go to progress'}
-                    </Button>
-                  </div>
+                <h2 style={{ fontSize: '18px', marginBottom: '8px' }}>
+                  {language === 'pl' ? 'Przerwać aktualną grę?' : 'Interrupt current game?'}
+                </h2>
+                <p style={{ marginBottom: '16px' }}>
+                  {language === 'pl'
+                    ? 'Gra zostanie przerwana, a obecny postęp w tej rundzie zostanie utracony.'
+                    : 'The current game will be stopped and your in-progress state for this round will be lost.'}
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => this.setState({ showInterruptGameModal: false })}
+                  >
+                    {language === 'pl' ? 'Anuluj' : 'Cancel'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      this.setState({
+                        showInterruptGameModal: false,
+                        route: 'progress',
+                      })
+                    }
+                  >
+                    {language === 'pl' ? 'Przejdź do postępu' : 'Go to progress'}
+                  </Button>
                 </div>
               </div>
-            )}
-          </Box>
+            </div>
+          )}
         </Container>
 
         {showNickModal && this.renderNickModal()}
