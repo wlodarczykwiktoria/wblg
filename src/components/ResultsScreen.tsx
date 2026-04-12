@@ -32,6 +32,26 @@ const EMPTY_RESULTS: GameResults = {
 };
 
 export class ResultsScreen extends React.Component<Props> {
+  private getResultsTitle(score: number, language: Language): string {
+    if (score <= 39) {
+      return language === 'pl' ? 'Nie poddawaj się!' : "Don't give up!";
+    }
+
+    if (score <= 59) {
+      return language === 'pl' ? 'Dobry początek!' : 'Good start!';
+    }
+
+    if (score <= 79) {
+      return language === 'pl' ? 'Dobra robota!' : 'Good job!';
+    }
+
+    if (score <= 94) {
+      return language === 'pl' ? 'Świetna robota!' : 'Excellent work!';
+    }
+
+    return language === 'pl' ? 'Brawo!' : 'Amazing work!';
+  }
+
   render() {
     const { language } = this.props;
     const results = this.props.results ?? EMPTY_RESULTS;
@@ -43,6 +63,7 @@ export class ResultsScreen extends React.Component<Props> {
     const mistakes = results.totalMistakes;
     const timeText = formatTime(results.timeSeconds);
     const pagesCompleted = `${results.completedPuzzles}/${results.totalPuzzles}`;
+    const dynamicTitle = this.getResultsTitle(score, language);
 
     return (
       <Box
@@ -64,7 +85,7 @@ export class ResultsScreen extends React.Component<Props> {
             color="#0F6B52"
             fontWeight="extrabold"
           >
-            {t.resultsTitle}
+            {dynamicTitle}
           </Heading>
 
           <Text

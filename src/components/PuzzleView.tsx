@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Button, CloseButton, Flex, Heading, Spinner, Stack, Text } from '@chakra-ui/react';
 import type { ApiClient } from '../api/ApiClient';
 import type { Level, Riddle } from '../api/types';
-import { FillGapsGame, type AnswersState } from './puzzles/FillGapsGame';
+import { type AnswersState, FillGapsGame } from './puzzles/FillGapsGame';
 import type { Language } from '../i18n';
 import { translations } from '../i18n';
 import type { GameResults } from '../gameTypes';
@@ -358,32 +358,83 @@ export class PuzzleView extends React.Component<Props, State> {
         py={{ base: 4, md: 6 }}
       >
         <Stack gap={10}>
-          <Flex justify="space-between" align="center" wrap="wrap" gap={3}>
-            <Box px={4} py={2} borderRadius="full" bg="white" boxShadow="0 8px 20px rgba(15, 23, 42, 0.06)">
-              <Text fontSize="sm" fontWeight="700" color="gray.700">
+          <Flex
+            justify="space-between"
+            align="center"
+            wrap="wrap"
+            gap={3}
+          >
+            <Box
+              px={4}
+              py={2}
+              borderRadius="full"
+              bg="white"
+              boxShadow="0 8px 20px rgba(15, 23, 42, 0.06)"
+            >
+              <Text
+                fontSize="sm"
+                fontWeight="700"
+                color="gray.700"
+              >
                 {t.puzzleOfLabel} {currentIndex + 1}/{riddles.length}
               </Text>
             </Box>
 
-            <Flex align="center" gap={3}>
-              <Box px={4} py={2} borderRadius="full" bg="white" boxShadow="0 8px 20px rgba(15, 23, 42, 0.06)">
-                <Text fontSize="sm" fontWeight="700" color="gray.700">
+            <Flex
+              align="center"
+              gap={3}
+            >
+              <Box
+                px={4}
+                py={2}
+                borderRadius="full"
+                bg="white"
+                boxShadow="0 8px 20px rgba(15, 23, 42, 0.06)"
+              >
+                <Text
+                  fontSize="sm"
+                  fontWeight="700"
+                  color="gray.700"
+                >
                   {t.timeLeftLabel}: <strong>{timeLabel}</strong>
                 </Text>
               </Box>
 
-              <Button size="sm" variant="outline" borderRadius="full" px={5} onClick={this.handlePause}>
+              <Button
+                size="sm"
+                variant="outline"
+                borderRadius="full"
+                px={5}
+                color="#6B5AA6"
+                borderColor="#D8D1EE"
+                bg="white"
+                _hover={{ bg: '#F8F6FF' }}
+                onClick={this.handlePause}
+              >
                 {t.pauseLabel}
               </Button>
             </Flex>
           </Flex>
 
-          <Box textAlign="center" mb={2}>
-            <Heading fontSize={{ base: '2xl', md: '4xl' }} fontWeight="800" color="#4B4572" mb={3}>
+          <Box
+            textAlign="center"
+            mb={2}
+          >
+            <Heading
+              fontSize={{ base: '2xl', md: '4xl' }}
+              fontWeight="800"
+              color="#4B4572"
+              mb={3}
+            >
               {t.puzzleHeading}
             </Heading>
 
-            <Text fontSize={{ base: 'md', md: 'xl' }} color="gray.600" maxW="3xl" mx="auto">
+            <Text
+              fontSize={{ base: 'md', md: 'xl' }}
+              color="gray.600"
+              maxW="3xl"
+              mx="auto"
+            >
               {t.puzzleInstruction}
             </Text>
           </Box>
@@ -400,12 +451,23 @@ export class PuzzleView extends React.Component<Props, State> {
           </Box>
 
           {feedbackText && (
-            <Box borderWidth="1px" borderRadius="20px" p={4} bg="red.50" borderColor="red.100">
+            <Box
+              borderWidth="1px"
+              borderRadius="20px"
+              p={4}
+              bg="red.50"
+              borderColor="red.100"
+            >
               <Text>{feedbackText}</Text>
             </Box>
           )}
 
-          <Flex justify="space-between" align="center" mt={2} gap={4}>
+          <Flex
+            justify="space-between"
+            align="center"
+            mt={2}
+            gap={4}
+          >
             <Button
               size="md"
               variant="outline"
@@ -454,7 +516,10 @@ export class PuzzleView extends React.Component<Props, State> {
             </Button>
           </Flex>
 
-          <Flex justify="center" mt={2}>
+          <Flex
+            justify="center"
+            mt={2}
+          >
             <Button
               onClick={this.handleFinishClick}
               minW={{ base: '100%', md: '420px' }}
@@ -473,11 +538,38 @@ export class PuzzleView extends React.Component<Props, State> {
         </Stack>
 
         {showPauseModal && (
-          <Box position="fixed" inset={0} bg="blackAlpha.500" backdropFilter="blur(4px)" zIndex={1400}>
-            <Flex h="100%" align="center" justify="center">
-              <Box bg="white" borderRadius="2xl" p={6} maxW="sm" w="90%" position="relative">
-                <CloseButton position="absolute" right={3} top={3} onClick={() => this.handleResume()} />
-                <Heading size="md" mb={3}>
+          <Box
+            position="fixed"
+            inset={0}
+            bg="blackAlpha.500"
+            backdropFilter="blur(4px)"
+            zIndex={1400}
+          >
+            <Flex
+              h="100%"
+              align="center"
+              justify="center"
+            >
+              <Box
+                bg="white"
+                borderRadius="2xl"
+                p={6}
+                maxW="sm"
+                w="90%"
+                position="relative"
+              >
+                <CloseButton
+                  position="absolute"
+                  right={3}
+                  top={3}
+                  onClick={() => this.handleResume()}
+                />
+                <Heading
+                  mb={3}
+                  size="md"
+                  color="#6B5AA6"
+                  bg="white"
+                >
                   {t.pauseLabel}
                 </Heading>
                 <Text mb={6}>
@@ -485,7 +577,12 @@ export class PuzzleView extends React.Component<Props, State> {
                     ? 'Gra jest wstrzymana. Możesz w każdej chwili wznowić.'
                     : 'The game is paused. You can resume at any time.'}
                 </Text>
-                <Button borderRadius="full" backgroundColor="#1e3932" color="white" onClick={() => this.handleResume()}>
+                <Button
+                  borderRadius="full"
+                  backgroundColor="#1e3932"
+                  color="white"
+                  onClick={() => this.handleResume()}
+                >
                   {t.resumeLabel}
                 </Button>
               </Box>
@@ -494,24 +591,62 @@ export class PuzzleView extends React.Component<Props, State> {
         )}
 
         {showFinishConfirm && (
-          <Box position="fixed" inset={0} bg="blackAlpha.500" backdropFilter="blur(4px)" zIndex={1400}>
-            <Flex h="100%" align="center" justify="center">
-              <Box bg="white" borderRadius="2xl" p={6} maxW="sm" w="90%" position="relative">
+          <Box
+            position="fixed"
+            inset={0}
+            bg="blackAlpha.500"
+            backdropFilter="blur(4px)"
+            zIndex={1400}
+          >
+            <Flex
+              h="100%"
+              align="center"
+              justify="center"
+            >
+              <Box
+                bg="white"
+                borderRadius="2xl"
+                p={6}
+                maxW="sm"
+                w="90%"
+                position="relative"
+              >
                 <CloseButton
                   position="absolute"
                   right={3}
                   top={3}
                   onClick={() => this.setState({ showFinishConfirm: false })}
                 />
-                <Heading size="md" mb={3}>
+                <Heading
+                  fontWeight="extrabold"
+                  size="md"
+                  mb={3}
+                  color="#6B5AA6"
+                >
                   {t.finishEarlyTitle}
                 </Heading>
                 <Text mb={6}>{t.finishEarlyMessage}</Text>
-                <Flex justify="flex-end" gap={3}>
-                  <Button variant="outline" onClick={() => this.setState({ showFinishConfirm: false })}>
+                <Flex
+                  justify="flex-end"
+                  gap={3}
+                >
+                  <Button
+                    borderRadius="full"
+                    px={5}
+                    color="#6B5AA6"
+                    borderColor="#D8D1EE"
+                    bg="white"
+                    _hover={{ bg: '#F8F6FF' }}
+                    onClick={() => this.setState({ showFinishConfirm: false })}
+                  >
                     {t.finishEarlyCancel}
                   </Button>
-                  <Button borderRadius="full" backgroundColor="#1e3932" color="white" onClick={() => this.finishInternal()}>
+                  <Button
+                    borderRadius="full"
+                    backgroundColor="#1e3932"
+                    color="white"
+                    onClick={() => this.finishInternal()}
+                  >
                     {t.finishEarlyConfirm}
                   </Button>
                 </Flex>

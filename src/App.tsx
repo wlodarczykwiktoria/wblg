@@ -817,7 +817,7 @@ export class App extends React.Component<unknown, AppState> {
             border={{ base: 'none', md: '1px solid #e9edf3' }}
             borderBottom={{ base: '1px solid #e2e8f0', md: 'none' }}
             boxShadow={{ base: '0 2px 8px 0 rgba(0,0,0,0.03)', md: '0 10px 30px rgba(15, 23, 42, 0.06)' }}
-            borderRadius={{ base: '0 0 20px 20px', md: '24px' }}
+            borderRadius='2xl'
             w={{ base: '100%', md: 'auto' }}
           >
             <Flex
@@ -828,6 +828,12 @@ export class App extends React.Component<unknown, AppState> {
               <Button
                 size="sm"
                 variant="outline"
+                borderRadius="full"
+                px={5}
+                color="#6B5AA6"
+                borderColor="#D8D1EE"
+                bg="white"
+                _hover={{ bg: '#F8F6FF' }}
                 onClick={this.handleOpenProgress}
               >
                 {t.progressNavLabel}
@@ -838,6 +844,12 @@ export class App extends React.Component<unknown, AppState> {
                 width="120px"
               >
                 <NativeSelect.Field
+                  borderRadius="full"
+                  px={5}
+                  color="#6B5AA6"
+                  borderColor="#D8D1EE"
+                  bg="white"
+                  _hover={{ bg: '#F8F6FF' }}
                   value={language}
                   onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
                     this.handleLanguageChange(event.target.value as Language)

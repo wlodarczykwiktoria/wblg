@@ -264,6 +264,10 @@ export class AnagramView extends React.Component<Props, State> {
                 size="sm"
                 variant="outline"
                 borderRadius="full"
+                color="#6B5AA6"
+                borderColor="#D8D1EE"
+                bg="white"
+                _hover={{ bg: '#F8F6FF' }}
                 px={5}
                 onClick={this.handlePause}
               >
@@ -390,9 +394,10 @@ export class AnagramView extends React.Component<Props, State> {
                   top={3}
                   onClick={() => this.handleResume()}
                 />
-                <Heading
+                  <Heading mb={3}
                   size="md"
-                  mb={3}
+                  color="#6B5AA6"
+                  bg="white"
                 >
                   {t.pauseLabel}
                 </Heading>

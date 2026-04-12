@@ -1,5 +1,3 @@
-// src/components/ProgressView.tsx
-
 import React from 'react';
 import { Box, Button, Flex, Heading, SimpleGrid, Spinner, Text } from '@chakra-ui/react';
 import type { Book } from '../api/types';
@@ -82,12 +80,10 @@ export class ProgressView extends React.Component<Props, State> {
     super(props);
     this.state = {
       selectedBookId: null,
-
       loadingList: true,
       apiProgress: [],
       apiBooks: [],
       error: null,
-
       loadingSummary: false,
       summary: null,
       summaryError: null,
@@ -160,7 +156,6 @@ export class ProgressView extends React.Component<Props, State> {
       const sessionId = localStorage.getItem('session_id');
       if (!sessionId) throw new Error('No session_id in localStorage (session not created yet)');
 
-
       const summary = await this.props.apiClient.getResultsSummary(bookId, sessionId);
       this.setState({ loadingSummary: false, summary, summaryError: null });
     } catch (e: unknown) {
@@ -185,7 +180,6 @@ export class ProgressView extends React.Component<Props, State> {
 
   private renderSummaryModal(selectedBook: Book & { completedChapters: number }) {
     const { language } = this.props;
-    const t = translations[language];
     const { loadingSummary, summary, summaryError } = this.state;
 
     const completed = summary?.chapters_completed ?? selectedBook.completedChapters ?? 0;
@@ -216,66 +210,155 @@ export class ProgressView extends React.Component<Props, State> {
           onClick={(e) => e.stopPropagation()}
           textAlign="center"
         >
-          <Heading size="md" mb={2} color="#0F6B52" fontWeight="extrabold">
+          <Heading
+            size="md"
+            mb={2}
+            color="#0F6B52"
+            fontWeight="extrabold"
+          >
             {selectedBook.title}
           </Heading>
-          <Text mb={8} color="gray.500" fontSize="md">
+          <Text
+            mb={8}
+            color="gray.500"
+            fontSize="md"
+          >
             {selectedBook.author}
           </Text>
 
-          <Box mx="auto" maxW="sm" borderWidth="1px" borderRadius="2xl" p={6} mb={8} bg="gray.50" boxShadow="md">
-            <Text fontSize="xs" textTransform="uppercase" letterSpacing="wide" color="gray.500" mb={2}>
-              {language === 'pl' ? 'Chapters completed' : 'Chapters completed'}
+          <Box
+            mx="auto"
+            maxW="sm"
+            borderWidth="1px"
+            borderRadius="2xl"
+            p={6}
+            mb={8}
+            bg="gray.50"
+            boxShadow="md"
+          >
+            <Text
+              fontSize="xs"
+              textTransform="uppercase"
+              letterSpacing="wide"
+              color="gray.500"
+              mb={2}
+            >
+              {language === 'pl' ? 'Ukończone rozdziały' : 'Chapters completed'}
             </Text>
 
-            <Heading size="2xl" color="green.500" fontWeight="extrabold">
+            <Heading
+              size="2xl"
+              color="green.500"
+              fontWeight="extrabold"
+            >
               {completed}/{total}
             </Heading>
 
-            <Text color="gray.600" mb={4}>
+            <Text
+              color="gray.600"
+              mb={4}
+            >
               {percent}%
             </Text>
 
-            <Box h="3" borderRadius="full" bg="gray.200" overflow="hidden" mt={2}>
-              <Box h="100%" width={`${percent}%`} bg="green.400" transition="width 0.5s" />
+            <Box
+              h="3"
+              borderRadius="full"
+              bg="gray.200"
+              overflow="hidden"
+              mt={2}
+            >
+              <Box
+                h="100%"
+                width={`${percent}%`}
+                bg="green.400"
+                transition="width 0.5s"
+              />
             </Box>
           </Box>
 
           {loadingSummary && (
-            <Flex justify="center" py={4}>
+            <Flex
+              justify="center"
+              py={4}
+            >
               <Spinner />
             </Flex>
           )}
 
           {summaryError && (
-            <Text mt={2} fontSize="sm" color="red.500">
+            <Text
+              mt={2}
+              fontSize="sm"
+              color="red.500"
+            >
               {summaryError}
             </Text>
           )}
 
           {summary && (
-            <Box mx="auto" maxW="md" borderWidth="1px" borderRadius="2xl" p={6} mb={4} bg="white" boxShadow="md">
-              <Text fontSize="sm" fontWeight="semibold" mb={4}>
+            <Box
+              mx="auto"
+              maxW="md"
+              borderWidth="1px"
+              borderRadius="2xl"
+              p={6}
+              mb={4}
+              bg="white"
+              boxShadow="md"
+            >
+              <Text
+                fontSize="sm"
+                fontWeight="semibold"
+                mb={4}
+              >
                 {language === 'pl' ? 'Podsumowanie' : 'Summary'}
               </Text>
 
-              <SimpleGrid columns={{ base: 1, md: 3 }} >
-                <Box borderRadius="xl" bg="green.50" p={4} boxShadow="sm">
-                  <Text fontSize="xs" color="gray.500">
+              <SimpleGrid
+                columns={{ base: 1, md: 3 }}
+                gap={4}
+              >
+                <Box
+                  borderRadius="full"
+                  bg="green.50"
+                  p={4}
+                  boxShadow="sm"
+                >
+                  <Text
+                    fontSize="xs"
+                    color="gray.500"
+                  >
                     {language === 'pl' ? 'Śr. dokładność' : 'Avg accuracy'}
                   </Text>
                   <Heading size="md">{formatAccuracy(summary.avg_accuracy)}</Heading>
                 </Box>
 
-                <Box borderRadius="xl" bg="blue.50" p={4} boxShadow="sm">
-                  <Text fontSize="xs" color="gray.500">
+                <Box
+                  borderRadius="full"
+                  bg="blue.50"
+                  p={4}
+                  boxShadow="sm"
+                >
+                  <Text
+                    fontSize="xs"
+                    color="gray.500"
+                  >
                     {language === 'pl' ? 'Śr. czas' : 'Avg duration'}
                   </Text>
                   <Heading size="md">{formatTime(summary.avg_duration_sec)}</Heading>
                 </Box>
 
-                <Box borderRadius="xl" bg="purple.50" p={4} boxShadow="sm">
-                  <Text fontSize="xs" color="gray.500">
+                <Box
+                  borderRadius="full"
+                  bg="purple.50"
+                  p={4}
+                  boxShadow="sm"
+                >
+                  <Text
+                    fontSize="xs"
+                    color="gray.500"
+                  >
                     {language === 'pl' ? 'Najczęstsza gra' : 'Most played'}
                   </Text>
                   <Heading size="md">{summary.most_played_puzzle_type}</Heading>
@@ -284,13 +367,23 @@ export class ProgressView extends React.Component<Props, State> {
             </Box>
           )}
 
-          <Flex justify="center" gap={4} mt={8}>
-            <Button variant="outline" width="160px" onClick={this.closeModal}>
+          <Flex
+            justify="center"
+            gap={4}
+            mt={8}
+            flexWrap="wrap"
+          >
+            <Button
+              variant="outline"
+              width="160px"
+              borderRadius="full"
+              borderColor="#D8D1EE"
+              color="#6B5AA6"
+              bg="white"
+              _hover={{ bg: '#F8F6FF' }}
+              onClick={this.closeModal}
+            >
               {language === 'pl' ? 'Zamknij' : 'Close'}
-            </Button>
-
-            <Button backgroundColor="#1e3932" color="white" width="160px" onClick={this.props.onBack}>
-              ← {t.back}
             </Button>
           </Flex>
         </Box>
@@ -307,71 +400,219 @@ export class ProgressView extends React.Component<Props, State> {
     const selectedBook = books.find((b) => b.id === selectedBookId);
 
     return (
-      <Box>
-        <Heading size="lg" mb={4}>
-          {t.progressHeading}
-        </Heading>
+      <Box
+        maxW="7xl"
+        mx="auto"
+        px={{ base: 4, md: 6 }}
+        py={{ base: 4, md: 6 }}
+      >
+        <Box
+          textAlign="center"
+          mb={8}
+        >
+          <Heading
+            fontSize={{ base: '2xl', md: '4xl' }}
+            fontWeight="800"
+            color="#2F5E52"
+            mb={3}
+          >
+            {language === 'pl' ? 'Twój postęp czytania' : 'Your Reading Progress'}
+          </Heading>
 
-        <Button size="sm" mb={4} variant="ghost" onClick={this.props.onBack}>
-          ← {t.back}
-        </Button>
+          <Text
+            fontSize={{ base: 'md', md: 'xl' }}
+            color="gray.600"
+            maxW="3xl"
+            mx="auto"
+          >
+            {language === 'pl'
+              ? 'Śledź ukończone rozdziały i wracaj do ćwiczeń dla każdej książki.'
+              : 'Track completed chapters and continue practicing with each book.'}
+          </Text>
+        </Box>
+
+        <Flex
+          justify="flex-start"
+          mb={5}
+        >
+          <Button
+            size="sm"
+            variant="outline"
+            borderRadius="full"
+            px={5}
+            color="#6B5AA6"
+            borderColor="#D8D1EE"
+            bg="white"
+            _hover={{ bg: '#F8F6FF' }}
+            onClick={this.props.onBack}
+          >
+            ← {t.back}
+          </Button>
+        </Flex>
 
         {loadingList && (
-          <Text mt={2} fontSize="sm" color="gray.600">
+          <Text
+            mt={2}
+            fontSize="sm"
+            color="gray.600"
+          >
             {language === 'pl' ? 'Ładowanie…' : 'Loading…'}
           </Text>
         )}
 
         {error && (
-          <Text mt={2} fontSize="sm" color="red.500">
+          <Text
+            mt={2}
+            fontSize="sm"
+            color="red.500"
+          >
             {error}
           </Text>
         )}
 
-        <Box display="flex" px={4} py={2} borderBottomWidth="1px" bg="gray.50" fontWeight="bold" fontSize="sm">
-          <Box flex="2">{t.columnTitle}</Box>
-          <Box flex="2">{t.columnAuthor}</Box>
-          <Box flex="1">{t.completedChaptersLabel}</Box>
-        </Box>
+        <Box
+          bg="white"
+          borderRadius="2xl"
+          border="1px solid #ECEAF6"
+          boxShadow="0 18px 50px rgba(15, 23, 42, 0.10)"
+          overflow="hidden"
+        >
+          <Box
+            display="flex"
+            px={6}
+            py={4}
+            borderBottomWidth="1px"
+            bg="gray.50"
+            fontWeight="bold"
+            fontSize="sm"
+            color="gray.700"
+          >
+            <Box flex="2">{t.columnTitle}</Box>
+            <Box flex="2">{t.columnAuthor}</Box>
+            <Box flex="2">{language === 'pl' ? 'Postęp' : 'Progress'}</Box>
+            <Box flex="0 0 160px" />
+          </Box>
 
-        {books.map((book) => {
-          const isSelected = selectedBookId === book.id;
-          return (
-            <Box
-              key={book.id}
-              display="flex"
-              alignItems="center"
-              px={4}
-              py={3}
-              borderBottomWidth="1px"
-              cursor="pointer"
-              _hover={{ bg: 'gray.50' }}
-              bg={isSelected ? 'blue.50' : undefined}
-              onClick={() => this.handleRowClick(book.id)}
+          {books.map((book) => {
+            const isSelected = selectedBookId === book.id;
+            const completed = book.completedChapters ?? 0;
+            const total = book.chapters ?? 0;
+            const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+            return (
+              <Box
+                key={book.id}
+                display="flex"
+                alignItems="center"
+                px={6}
+                py={5}
+                borderBottomWidth="1px"
+                cursor="pointer"
+                _hover={{ bg: 'gray.50' }}
+                bg={isSelected ? 'green.50' : undefined}
+                onClick={() => this.handleRowClick(book.id)}
+              >
+                <Box
+                  flex="2"
+                  pr={4}
+                >
+                  <Text
+                    fontWeight="700"
+                    fontSize={{ base: 'md', md: 'xl' }}
+                    color="gray.800"
+                  >
+                    {book.title}
+                  </Text>
+                  <Text
+                    fontSize="md"
+                    color="gray.500"
+                    mt={1}
+                  >
+                    {getGenreLabel(book.genre, language)}
+                  </Text>
+                </Box>
+
+                <Box
+                  flex="2"
+                  pr={4}
+                >
+                  <Text
+                    fontSize={{ base: 'md', md: 'xl' }}
+                    color="gray.700"
+                  >
+                    {book.author}
+                  </Text>
+                </Box>
+
+                <Box
+                  flex="2"
+                  pr={4}
+                >
+                  <Text
+                    fontWeight="700"
+                    fontSize={{ base: 'md', md: 'xl' }}
+                    color="gray.700"
+                    mb={2}
+                  >
+                    {completed}/{total}
+                  </Text>
+
+                  <Box
+                    h="3"
+                    borderRadius="full"
+                    bg="gray.200"
+                    overflow="hidden"
+                  >
+                    <Box
+                      h="100%"
+                      width={`${percent}%`}
+                      bg="#92D5B4"
+                      transition="width 0.4s ease"
+                      borderRadius="full"
+                    />
+                  </Box>
+                </Box>
+
+                <Box
+                  flex="0 0 160px"
+                  display="flex"
+                  justifyContent="flex-end"
+                >
+                  <Button
+                    borderRadius="full"
+                    minW="140px"
+                    h="52px"
+                    backgroundColor={completed > 0 ? '#295B4E' : 'white'}
+                    color={completed > 0 ? 'white' : '#295B4E'}
+                    borderWidth="1px"
+                    borderColor={completed > 0 ? '#295B4E' : '#D8DDE6'}
+                    boxShadow={completed > 0 ? '0 10px 24px rgba(41, 91, 78, 0.16)' : 'none'}
+                    _hover={{
+                      bg: completed > 0 ? '#214B40' : 'gray.50',
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      this.handleRowClick(book.id);
+                    }}
+                  >
+                    {language === 'pl' ? 'Szczegóły' : 'Details'}
+                  </Button>
+                </Box>
+              </Box>
+            );
+          })}
+
+          {books.length === 0 && (
+            <Text
+              mt={4}
+              fontSize="sm"
+              px={6}
+              py={6}
             >
-              <Box flex="2">
-                <Text fontWeight="medium">{book.title}</Text>
-                <Text fontSize="sm" color="gray.500">
-                  {getGenreLabel(book.genre, language)}
-                </Text>
-              </Box>
-              <Box flex="2">
-                <Text>{book.author}</Text>
-              </Box>
-              <Box flex="1">
-                <Text>
-                  {book.completedChapters}/{book.chapters}
-                </Text>
-              </Box>
-            </Box>
-          );
-        })}
-
-        {books.length === 0 && (
-          <Text mt={4} fontSize="sm">
-            {language === 'pl' ? 'Brak książek do wyświetlenia.' : 'No books to display.'}
-          </Text>
-        )}
+              {language === 'pl' ? 'Brak książek do wyświetlenia.' : 'No books to display.'}
+            </Text>
+          )}
+        </Box>
 
         {selectedBook && this.renderSummaryModal(selectedBook)}
       </Box>
