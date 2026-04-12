@@ -50,7 +50,6 @@ function renderView() {
         progress={sampleProgress}
         onBookSelected={onBookSelected}
         onResetBookProgress={jest.fn()}
-        onBack={jest.fn()}
       />
     </ChakraProvider>,
   );
