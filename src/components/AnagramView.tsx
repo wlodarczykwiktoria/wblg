@@ -189,8 +189,7 @@ export class AnagramView extends React.Component<Props, State> {
   }
 
   render() {
-    const { loading, riddles, currentIndex, totalSeconds, selectedPerPuzzle, showPauseModal } =
-      this.state;
+    const { loading, riddles, currentIndex, totalSeconds, selectedPerPuzzle, showPauseModal } = this.state;
 
     const t = translations[this.props.language];
 
@@ -264,11 +263,11 @@ export class AnagramView extends React.Component<Props, State> {
                 size="sm"
                 variant="outline"
                 borderRadius="full"
+                px={5}
                 color="#6B5AA6"
                 borderColor="#D8D1EE"
                 bg="white"
                 _hover={{ bg: '#F8F6FF' }}
-                px={5}
                 onClick={this.handlePause}
               >
                 {t.pauseLabel}
@@ -394,7 +393,8 @@ export class AnagramView extends React.Component<Props, State> {
                   top={3}
                   onClick={() => this.handleResume()}
                 />
-                  <Heading mb={3}
+                <Heading
+                  mb={3}
                   size="md"
                   color="#6B5AA6"
                   bg="white"

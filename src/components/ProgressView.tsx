@@ -320,7 +320,7 @@ export class ProgressView extends React.Component<Props, State> {
                 gap={4}
               >
                 <Box
-                  borderRadius="full"
+                  borderRadius="xl"
                   bg="green.50"
                   p={4}
                   boxShadow="sm"
@@ -335,7 +335,7 @@ export class ProgressView extends React.Component<Props, State> {
                 </Box>
 
                 <Box
-                  borderRadius="full"
+                  borderRadius="xl"
                   bg="blue.50"
                   p={4}
                   boxShadow="sm"
@@ -350,7 +350,7 @@ export class ProgressView extends React.Component<Props, State> {
                 </Box>
 
                 <Box
-                  borderRadius="full"
+                  borderRadius="xl"
                   bg="purple.50"
                   p={4}
                   boxShadow="sm"

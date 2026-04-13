@@ -505,8 +505,8 @@ export class SwitchView extends React.Component<Props, State> {
               >
                 <CloseButton
                   position="absolute"
-                  top={2}
-                  right={2}
+                  top={3}
+                  right={3}
                   onClick={this.handleResume}
                 />
                 <Heading
@@ -554,8 +554,8 @@ export class SwitchView extends React.Component<Props, State> {
               >
                 <CloseButton
                   position="absolute"
-                  top={2}
-                  right={2}
+                  top={3}
+                  right={3}
                   onClick={() => this.setState({ showFinishConfirm: false })}
                 />
                 <Heading

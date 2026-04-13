@@ -24,7 +24,6 @@ function splitIntoLines(words: RiddleWord[]): RiddleWord[][] {
 
   words.forEach((w) => {
     const hasNewline = w.value.includes('\n');
-
     const cleanedValue = w.value.replace(/\n+/g, '');
 
     current.push({ ...w, value: cleanedValue });
@@ -54,21 +53,25 @@ export const AnagramGame: React.FC<Props> = ({ riddle, selectedWordIds, onToggle
     <Box mt={4}>
       <Box
         bg="white"
-        borderRadius="2xl"
-        boxShadow="md"
-        px={10}
-        py={8}
+        borderRadius="32px"
+        boxShadow="0 18px 50px rgba(15, 23, 42, 0.10)"
+        border="1px solid #ECEAF6"
+        px={{ base: 6, md: 10 }}
+        py={{ base: 6, md: 8 }}
       >
-        <VStack align="flex-start">
+        <VStack
+          align="flex-start"
+          gap={4}
+        >
           {lines.map((line, lineIdx) => (
             <Text
               key={lineIdx}
-              fontSize="lg"
-              lineHeight="1.8"
+              fontSize={{ base: 'lg', md: '2xl' }}
+              lineHeight="1.9"
+              color="gray.800"
             >
               {line.map((w, index) => {
                 const selected = selectedWordIds.includes(w.id);
-
                 const displayValue = w.value.replace(/\n+/g, '');
 
                 if (!displayValue) {
@@ -81,17 +84,21 @@ export const AnagramGame: React.FC<Props> = ({ riddle, selectedWordIds, onToggle
                       as="button"
                       onClick={() => onToggleWord(w.id)}
                       borderWidth="1px"
-                      borderColor={selected ? 'green.400' : 'transparent'}
+                      borderColor={selected ? 'green.300' : 'transparent'}
                       bg={selected ? 'green.50' : 'transparent'}
-                      _hover={{ bg: 'green.100' }}
-                      borderRadius="md"
-                      fontWeight="normal"
-                      fontSize="md"
                       color={selected ? 'green.700' : 'gray.800'}
-                      boxShadow="none"
-                      transition="background 0.2s"
+                      borderRadius="14px"
+                      px={2}
+                      py={1}
                       display="inline"
-                      style={{ padding: '2px 2px', margin: '0 1px' }}
+                      cursor="pointer"
+                      fontWeight="normal"
+                      fontSize="inherit"
+                      transition="all 0.2s"
+                      _hover={{
+                        bg: selected ? 'green.50' : '#F8FAFC',
+                        borderColor: selected ? 'green.300' : '#D8D1EE',
+                      }}
                     >
                       {displayValue}
                     </Box>

@@ -74,17 +74,20 @@ export const SwitchGame: React.FC<Props> = ({ riddle, selectedPairs, openWordId,
       <Box
         bg="white"
         borderRadius="32px"
-        boxShadow="0 18px 44px rgba(15, 23, 42, 0.08)"
+        boxShadow="0 18px 50px rgba(15, 23, 42, 0.10)"
         border="1px solid #ECEAF6"
         px={{ base: 6, md: 10 }}
         py={{ base: 6, md: 8 }}
       >
-        <VStack align="flex-start" gap={4}>
+        <VStack
+          align="flex-start"
+          gap={4}
+        >
           {lines.map((line, lineIdx) => (
             <Text
               key={lineIdx}
-              fontSize={{ base: 'lg', md: 'xl' }}
-              lineHeight="2"
+              fontSize={{ base: 'lg', md: '2xl' }}
+              lineHeight="1.9"
               color="gray.800"
             >
               {line.map((w, indexInLine) => {
@@ -115,8 +118,8 @@ export const SwitchGame: React.FC<Props> = ({ riddle, selectedPairs, openWordId,
                         isLastWord
                           ? undefined
                           : () => {
-                            onWordClick(w.id, wordIndex);
-                          }
+                              onWordClick(w.id, wordIndex);
+                            }
                       }
                       borderWidth="1px"
                       borderColor={isInPair ? colorCfg?.border : isOpen ? '#B9C1D9' : 'transparent'}
@@ -132,9 +135,9 @@ export const SwitchGame: React.FC<Props> = ({ riddle, selectedPairs, openWordId,
                         isLastWord
                           ? undefined
                           : {
-                            bg: isInPair ? colorCfg?.bg : '#F8FAFC',
-                            borderColor: isInPair ? colorCfg?.border : '#D8D1EE',
-                          }
+                              bg: isInPair ? colorCfg?.bg : '#F8FAFC',
+                              borderColor: isInPair ? colorCfg?.border : '#D8D1EE',
+                            }
                       }
                     >
                       {pairNumber && (

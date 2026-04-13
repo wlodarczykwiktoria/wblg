@@ -278,6 +278,7 @@ export class ChoiceView extends React.Component<Props, State> {
         maxW="6xl"
         mx="auto"
         px={{ base: 4, md: 6 }}
+        py={{ base: 4, md: 6 }}
       >
         <Stack gap={10}>
           <Flex
