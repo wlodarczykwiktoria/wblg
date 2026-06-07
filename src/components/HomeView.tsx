@@ -230,7 +230,7 @@ export const HomeView: React.FC<Props> = ({
 
       {activePanel && (
         <Box position="fixed" inset={0} bg="blackAlpha.600" backdropFilter="blur(8px)" zIndex={2000}>
-          <Flex h="100%" align="center" justify="center" p={4}>
+          <Flex h={activePanel === 'game' ? "100%" : 'auto'} align="center" justify="center" p={4}>
             <Box
               bg="white"
               borderRadius="28px"

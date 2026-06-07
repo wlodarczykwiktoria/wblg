@@ -145,7 +145,7 @@ export const BookSelectionView: React.FC<Props> = ({ language, books, booksLoadi
   const openFilterModal = () => {
     setTempSelectedAuthors([...selectedAuthors]);
     setTempSelectedGenres([...selectedGenres]);
-    setTempYearRange(yearRange ? [...yearRange] : null);
+    setTempYearRange(yearRange ? [...yearRange] : [...yearBounds]);
     setFilterModalOpen(true);
   };
 
@@ -163,7 +163,7 @@ export const BookSelectionView: React.FC<Props> = ({ language, books, booksLoadi
     setYearRange(null);
     setTempSelectedAuthors([]);
     setTempSelectedGenres([]);
-    setTempYearRange(null);
+    setTempYearRange([...yearBounds]);
     setCurrentPage(1);
     setFilterModalOpen(false);
   };
@@ -242,6 +242,10 @@ export const BookSelectionView: React.FC<Props> = ({ language, books, booksLoadi
           selectedAuthors={tempSelectedAuthors}
           selectedGenres={tempSelectedGenres}
           yearRange={tempYearRange ?? yearBounds}
+          yearBounds={yearBounds}
+          onYearRangeChange={(range) => {
+            setTempYearRange(range);
+          }}
           onToggleAuthor={(author) => setTempSelectedAuthors((values) => toggleValue(values, author))}
           onToggleGenre={(genre) => setTempSelectedGenres((values) => toggleValue(values, genre))}
           onCancel={() => setFilterModalOpen(false)}

@@ -40,6 +40,7 @@ export function BookSelectionToolbar({
         boxShadow="0 10px 24px rgba(15, 23, 42, 0.05)"
         _focusVisible={{ borderColor: '#2F9E7E', boxShadow: '0 0 0 3px rgba(47, 158, 126, 0.12)' }}
       />
+
       <Button
         onClick={onOpenFilters}
         h="56px"
@@ -137,6 +138,7 @@ export function BookTable({
               direction={sortDirection}
             />
           </Box>
+
           <Box
             flex="2"
             cursor="pointer"
@@ -148,6 +150,7 @@ export function BookTable({
               direction={sortDirection}
             />
           </Box>
+
           <Box
             flex="1"
             cursor="pointer"
@@ -204,6 +207,7 @@ export function BookTable({
                   >
                     {book.title}
                   </Text>
+
                   <Text
                     fontSize="sm"
                     color="gray.500"
@@ -211,6 +215,7 @@ export function BookTable({
                   >
                     {getGenreLabel(book.genre, language)}
                   </Text>
+
                   <Text
                     fontSize="xs"
                     color="gray.400"
@@ -274,10 +279,16 @@ export function BookPagination({
         gap={2}
       >
         <Text fontSize="sm">{t.paginationPerPageLabel}</Text>
+
         <select
           value={pageSize}
           onChange={(event) => onPageSizeChange(parseInt(event.target.value, 10))}
-          style={{ padding: '10px 14px', borderRadius: '14px', border: '1px solid #D9DDE7', background: '#FFFFFF' }}
+          style={{
+            padding: '10px 14px',
+            borderRadius: '14px',
+            border: '1px solid #D9DDE7',
+            background: '#FFFFFF',
+          }}
         >
           {[5, 10, 15, 20].map((value) => (
             <option
@@ -474,6 +485,7 @@ export function ChapterSelectModal({
         >
           {t.cancelLabel}
         </Button>
+
         <Button
           h="48px"
           px={5}
@@ -499,6 +511,8 @@ export function BookFilterModal({
   selectedAuthors,
   selectedGenres,
   yearRange,
+  yearBounds,
+  onYearRangeChange,
   onToggleAuthor,
   onToggleGenre,
   onCancel,
@@ -511,6 +525,8 @@ export function BookFilterModal({
   selectedAuthors: string[];
   selectedGenres: string[];
   yearRange: [number, number];
+  yearBounds?: [number, number];
+  onYearRangeChange(range: [number, number]): void;
   onToggleAuthor(author: string): void;
   onToggleGenre(genre: string): void;
   onCancel(): void;
@@ -518,6 +534,69 @@ export function BookFilterModal({
   onApply(): void;
 }): React.ReactElement {
   const t = translations[language];
+
+  const trackRef = React.useRef<HTMLDivElement | null>(null);
+  const [draggingHandle, setDraggingHandle] = React.useState<'from' | 'to' | null>(null);
+
+  const selectedFromYear = yearRange[0];
+  const selectedToYear = yearRange[1];
+
+  const minYear = yearBounds?.[0] ?? selectedFromYear;
+  const maxYear = yearBounds?.[1] ?? selectedToYear;
+  const rangeSize = maxYear - minYear;
+
+  const fromPercent = rangeSize === 0 ? 0 : ((selectedFromYear - minYear) / rangeSize) * 100;
+  const toPercent = rangeSize === 0 ? 100 : ((selectedToYear - minYear) / rangeSize) * 100;
+
+  const getYearFromPointer = (event: React.PointerEvent<HTMLDivElement>): number => {
+    const rect = trackRef.current?.getBoundingClientRect();
+
+    if (!rect || rect.width === 0) {
+      return selectedFromYear;
+    }
+
+    const percentage = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+    return Math.round(minYear + percentage * rangeSize);
+  };
+
+  const updateYearRange = (handle: 'from' | 'to', year: number) => {
+    if (handle === 'from') {
+      onYearRangeChange([Math.min(year, selectedToYear), selectedToYear]);
+      return;
+    }
+
+    onYearRangeChange([selectedFromYear, Math.max(year, selectedFromYear)]);
+  };
+
+  const getClosestHandle = (year: number): 'from' | 'to' => {
+    const distanceFrom = Math.abs(year - selectedFromYear);
+    const distanceTo = Math.abs(year - selectedToYear);
+
+    return distanceFrom <= distanceTo ? 'from' : 'to';
+  };
+
+  const handleSliderPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    const nextYear = getYearFromPointer(event);
+    const closestHandle = getClosestHandle(nextYear);
+
+    setDraggingHandle(closestHandle);
+    updateYearRange(closestHandle, nextYear);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleSliderPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingHandle) return;
+
+    updateYearRange(draggingHandle, getYearFromPointer(event));
+  };
+
+  const handleSliderPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    setDraggingHandle(null);
+  };
 
   return (
     <ModalBox>
@@ -538,6 +617,7 @@ export function BookFilterModal({
         >
           {t.filtersAuthorsLabel}
         </Text>
+
         <Flex
           wrap="wrap"
           gap={2}
@@ -576,6 +656,7 @@ export function BookFilterModal({
         >
           {t.filtersGenresLabel}
         </Text>
+
         <Flex
           wrap="wrap"
           gap={2}
@@ -607,19 +688,108 @@ export function BookFilterModal({
       </Box>
 
       <Box mb={6}>
-        <Text
-          fontSize="sm"
-          fontWeight="semibold"
-          mb={2}
+        <Flex
+          justify="space-between"
+          align="center"
+          mb={3}
         >
-          {t.filtersPublicationYearLabel}
-        </Text>
-        <Text
-          fontSize="xs"
-          mb={2}
+          <Text
+            fontSize="sm"
+            fontWeight="semibold"
+          >
+            {t.filtersPublicationYearLabel}
+          </Text>
+
+          <Text
+            fontSize="sm"
+            fontWeight="700"
+            color="#0F6B52"
+          >
+            {selectedFromYear} – {selectedToYear}
+          </Text>
+        </Flex>
+
+        <Box
+          ref={trackRef}
+          position="relative"
+          h="34px"
+          px={1}
+          cursor="pointer"
+          touchAction="none"
+          userSelect="none"
+          onPointerDown={handleSliderPointerDown}
+          onPointerMove={handleSliderPointerMove}
+          onPointerUp={handleSliderPointerUp}
+          onPointerCancel={handleSliderPointerUp}
         >
-          {yearRange[0]} – {yearRange[1]}
-        </Text>
+          <Box
+            position="absolute"
+            left={1}
+            right={1}
+            top="50%"
+            transform="translateY(-50%)"
+            h="8px"
+            borderRadius="999px"
+            bg="#ECEAF6"
+            overflow="hidden"
+          >
+            <Box
+              position="absolute"
+              left={`${fromPercent}%`}
+              right={`${100 - toPercent}%`}
+              h="100%"
+              background="linear-gradient(90deg, #165B49 0%, #0F6B52 100%)"
+              borderRadius="999px"
+            />
+          </Box>
+
+          <Box
+            position="absolute"
+            left={`calc(${fromPercent}% - 11px)`}
+            top="50%"
+            transform="translateY(-50%)"
+            boxSize="22px"
+            borderRadius="999px"
+            bg="white"
+            border="4px solid #0F6B52"
+            boxShadow="0 8px 18px rgba(15, 107, 82, 0.24)"
+            pointerEvents="none"
+            zIndex={3}
+          />
+
+          <Box
+            position="absolute"
+            left={`calc(${toPercent}% - 11px)`}
+            top="50%"
+            transform="translateY(-50%)"
+            boxSize="22px"
+            borderRadius="999px"
+            bg="white"
+            border="4px solid #0F6B52"
+            boxShadow="0 8px 18px rgba(15, 107, 82, 0.24)"
+            pointerEvents="none"
+            zIndex={4}
+          />
+        </Box>
+
+        <Flex
+          justify="space-between"
+          mt={1}
+        >
+          <Text
+            fontSize="xs"
+            color="gray.500"
+          >
+            {minYear}
+          </Text>
+
+          <Text
+            fontSize="xs"
+            color="gray.500"
+          >
+            {maxYear}
+          </Text>
+        </Flex>
       </Box>
 
       <Flex
