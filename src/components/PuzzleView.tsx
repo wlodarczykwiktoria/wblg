@@ -90,7 +90,7 @@ export const PuzzleView: React.FC<Props> = ({
   const [gameId, setGameId] = useState<number | null>(null);
   const { totalSeconds, resetTimer } = useElapsedTimer(isPaused);
 
-  const startLevel = useCallback(async () => {
+  const startGame = useCallback(async () => {
     setLoading(true);
     setFeedbackKey(null);
     setIsPaused(false);
@@ -121,8 +121,8 @@ export const PuzzleView: React.FC<Props> = ({
   }, [apiClient, bookId, chapter, resetTimer, type]);
 
   useEffect(() => {
-    void startLevel();
-  }, [startLevel]);
+    void startGame();
+  }, [startGame]);
 
   const handleAnswersChange = useCallback((puzzleIndex: number, answers: AnswersState) => {
     setAnswersPerPuzzle((previous) => {
