@@ -1,12 +1,15 @@
 import React from 'react';
+import { FiArrowLeft } from 'react-icons/fi';
 import { Box, Button, Flex, Heading, SimpleGrid, Spinner, Text } from '@chakra-ui/react';
-import type { Book } from '../api/types';
+import type { Book } from '../api/model.ts';
 import type { Language } from '../i18n';
 import { translations } from '../i18n';
 import type { BookProgress } from '../storage/progressStorage';
-import type { ResultsLatestResponse, ResultsSummaryResponse } from '../api/modelV2';
+import type { ResultsLatestResponse, ResultsSummaryResponse } from '../api/model.ts';
 import { getGenreLabel } from './genreTranslations';
 import type { ApiClient } from '../api/ApiClient';
+import { formatAccuracyPercent, formatDuration } from '../shared/utils/time.utils';
+import { getSessionId } from '../shared/utils/session.utils';
 
 type Props = {
   apiClient: ApiClient;
@@ -26,21 +29,6 @@ type State = {
   summary: ResultsSummaryResponse | null;
   summaryError: string | null;
 };
-
-function formatTime(secondsRaw: unknown): string {
-  const seconds = Number(secondsRaw);
-  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
-  const m = Math.floor(seconds / 60);
-  const s = Math.round(seconds % 60);
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
-
-function formatAccuracy(accRaw: unknown): string {
-  const acc = Number(accRaw);
-  if (!Number.isFinite(acc) || acc < 0) return '0%';
-  const percent = acc <= 1 ? Math.round(acc * 100) : Math.round(acc);
-  return `${percent}%`;
-}
 
 function mapProgressSummaryToUi(
   data: ResultsLatestResponse,
@@ -64,7 +52,7 @@ function mapProgressSummaryToUi(
     chapters: item.chapters.map((ch, index) => ({
       id: String(ch.extract_id),
       chapterIndex: ch.extract_no,
-      title: ch.extract_title ?? (language === 'pl' ? `Rozdział ${index + 1}` : `Chapter ${index + 1}`),
+      title: ch.extract_title ?? `${translations[language].chapterLabel} ${index + 1}`,
       numberLabel: `${ch.extract_no} / ${item.stats.total_chapters}`,
       scorePercent: ch.result ? Math.round(ch.result.score) : 0,
       timeSeconds: ch.result?.duration_sec ?? 0,
@@ -106,19 +94,11 @@ export class ProgressView extends React.Component<Props, State> {
     try {
       this.setState({ loadingList: true, error: null });
 
-      const sessionId = localStorage.getItem('session_id');
-      if (!sessionId) throw new Error('No session_id in localStorage (session not created yet)');
+      const sessionId = getSessionId();
+      if (!sessionId) throw new Error('No active session');
 
-      const res = await fetch('https://wblg-backend-1007953962746.europe-west1.run.app/progress/summary', {
-        method: 'GET',
-        headers: { 'X-Session-Id': sessionId },
-      });
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      const data = (await res.json()) as ResultsLatestResponse;
-      const safe = Array.isArray(data) ? data : [];
-      const mapped = mapProgressSummaryToUi(safe, this.props.language);
+      const data = await this.props.apiClient.getProgressSummary(sessionId);
+      const mapped = mapProgressSummaryToUi(data, this.props.language);
 
       this.setState({
         apiBooks: mapped.books,
@@ -153,8 +133,8 @@ export class ProgressView extends React.Component<Props, State> {
     try {
       this.setState({ loadingSummary: true, summary: null, summaryError: null });
 
-      const sessionId = localStorage.getItem('session_id');
-      if (!sessionId) throw new Error('No session_id in localStorage (session not created yet)');
+      const sessionId = getSessionId();
+      if (!sessionId) throw new Error('No active session');
 
       const summary = await this.props.apiClient.getResultsSummary(bookId, sessionId);
       this.setState({ loadingSummary: false, summary, summaryError: null });
@@ -181,6 +161,7 @@ export class ProgressView extends React.Component<Props, State> {
   private renderSummaryModal(selectedBook: Book & { completedChapters: number }) {
     const { language } = this.props;
     const { loadingSummary, summary, summaryError } = this.state;
+    const t = translations[language];
 
     const completed = summary?.chapters_completed ?? selectedBook.completedChapters ?? 0;
     const total = selectedBook.chapters ?? 0;
@@ -243,7 +224,7 @@ export class ProgressView extends React.Component<Props, State> {
               color="gray.500"
               mb={2}
             >
-              {language === 'pl' ? 'Ukończone rozdziały' : 'Chapters completed'}
+              {t.progressCompletedChaptersLabel}
             </Text>
 
             <Heading
@@ -312,7 +293,7 @@ export class ProgressView extends React.Component<Props, State> {
                 fontWeight="semibold"
                 mb={4}
               >
-                {language === 'pl' ? 'Podsumowanie' : 'Summary'}
+                {t.progressSummaryLabel}
               </Text>
 
               <SimpleGrid
@@ -329,9 +310,9 @@ export class ProgressView extends React.Component<Props, State> {
                     fontSize="xs"
                     color="gray.500"
                   >
-                    {language === 'pl' ? 'Śr. dokładność' : 'Avg accuracy'}
+                    {t.progressAvgAccuracyLabel}
                   </Text>
-                  <Heading size="md">{formatAccuracy(summary.avg_accuracy)}</Heading>
+                  <Heading size="md">{formatAccuracyPercent(summary.avg_accuracy)}</Heading>
                 </Box>
 
                 <Box
@@ -344,9 +325,9 @@ export class ProgressView extends React.Component<Props, State> {
                     fontSize="xs"
                     color="gray.500"
                   >
-                    {language === 'pl' ? 'Śr. czas' : 'Avg duration'}
+                    {t.progressAvgDurationLabel}
                   </Text>
-                  <Heading size="md">{formatTime(summary.avg_duration_sec)}</Heading>
+                  <Heading size="md">{formatDuration(summary.avg_duration_sec)}</Heading>
                 </Box>
 
                 <Box
@@ -359,7 +340,7 @@ export class ProgressView extends React.Component<Props, State> {
                     fontSize="xs"
                     color="gray.500"
                   >
-                    {language === 'pl' ? 'Najczęstsza gra' : 'Most played'}
+                    {t.progressMostPlayedLabel}
                   </Text>
                   <Heading size="md">{summary.most_played_puzzle_type}</Heading>
                 </Box>
@@ -383,7 +364,7 @@ export class ProgressView extends React.Component<Props, State> {
               _hover={{ bg: '#F8F6FF' }}
               onClick={this.closeModal}
             >
-              {language === 'pl' ? 'Zamknij' : 'Close'}
+              {t.closeLabel}
             </Button>
           </Flex>
         </Box>
@@ -416,7 +397,7 @@ export class ProgressView extends React.Component<Props, State> {
             color="#2F5E52"
             mb={3}
           >
-            {language === 'pl' ? 'Twój postęp czytania' : 'Your Reading Progress'}
+            {t.progressReadingHeading}
           </Heading>
 
           <Text
@@ -425,9 +406,7 @@ export class ProgressView extends React.Component<Props, State> {
             maxW="3xl"
             mx="auto"
           >
-            {language === 'pl'
-              ? 'Śledź ukończone rozdziały i wracaj do ćwiczeń dla każdej książki.'
-              : 'Track completed chapters and continue practicing with each book.'}
+            {t.progressReadingDescription}
           </Text>
         </Box>
 
@@ -446,7 +425,10 @@ export class ProgressView extends React.Component<Props, State> {
             _hover={{ bg: '#F8F6FF' }}
             onClick={this.props.onBack}
           >
-            ← {t.back}
+            <Flex as="span" align="center" gap={2}>
+              <Box as={FiArrowLeft} aria-hidden boxSize="1.05em" />
+              {t.back}
+            </Flex>
           </Button>
         </Flex>
 
@@ -456,7 +438,7 @@ export class ProgressView extends React.Component<Props, State> {
             fontSize="sm"
             color="gray.600"
           >
-            {language === 'pl' ? 'Ładowanie…' : 'Loading…'}
+            {t.loadingLabel}
           </Text>
         )}
 
@@ -489,7 +471,7 @@ export class ProgressView extends React.Component<Props, State> {
           >
             <Box flex="2">{t.columnTitle}</Box>
             <Box flex="2">{t.columnAuthor}</Box>
-            <Box flex="2">{language === 'pl' ? 'Postęp' : 'Progress'}</Box>
+            <Box flex="2">{t.progressColumnLabel}</Box>
             <Box flex="0 0 160px" />
           </Box>
 
@@ -595,7 +577,7 @@ export class ProgressView extends React.Component<Props, State> {
                       this.handleRowClick(book.id);
                     }}
                   >
-                    {language === 'pl' ? 'Szczegóły' : 'Details'}
+                    {t.progressDetailsLabel}
                   </Button>
                 </Box>
               </Box>
@@ -609,7 +591,7 @@ export class ProgressView extends React.Component<Props, State> {
               px={6}
               py={6}
             >
-              {language === 'pl' ? 'Brak książek do wyświetlenia.' : 'No books to display.'}
+              {t.progressNoBooksLabel}
             </Text>
           )}
         </Box>

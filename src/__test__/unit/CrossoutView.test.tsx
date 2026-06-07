@@ -1,66 +1,51 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
-import { CrossoutView } from '../../components/CrossoutView';
-
-const crossoutRiddle = {
-  id: 'cross-1',
-  lines: [
-    { id: 'l1', text: 'Linia poprawna' },
-    { id: 'l2', text: 'Linia błędna (do skreślenia)' },
-    { id: 'l3', text: 'Inna linia poprawna' },
-  ],
-  correctLineId: 'l2',
-} as never;
-
-const apiClientMock = {
-  startCrossoutGame: jest.fn().mockResolvedValue([{ gameId: 1, riddle: crossoutRiddle }]),
-  submitCrossoutAnswers: jest.fn().mockResolvedValue({
-    score: 70,
-    mistakes: 1,
-    time: '0:04',
-    accuracy: 0.7,
-    pagesCompleted: 1,
-  }),
-  createResults: jest.fn().mockResolvedValue(null),
-} as never;
+import { CrossoutView } from '../../components/CrossoutView.tsx';
+import { crossoutRiddle, expectedGameResults, startResponse } from '../fixtures.ts';
+import { makeApiClientDouble } from './testApiClient.ts';
+import { renderWithChakra } from './renderWithChakra.tsx';
 
 function renderView() {
-  const onFinishLevel = jest.fn(() => {});
+  const apiClient = makeApiClientDouble({
+    startCrossoutGame: jest.fn().mockResolvedValue(startResponse(crossoutRiddle)),
+  });
+  const onFinishLevel = jest.fn();
 
-  render(
-    <ChakraProvider value={defaultSystem}>
-      <CrossoutView
-        apiClient={apiClientMock}
-        extractId={1}
-        type="crossout"
-        language="en"
-        bookId={1}
-        chapter={1}
-        onBackToHome={jest.fn()}
-        onFinishLevel={onFinishLevel}
-      />
-    </ChakraProvider>,
+  renderWithChakra(
+    <CrossoutView
+      apiClient={apiClient}
+      type="crossout"
+      language="en"
+      bookId={1}
+      chapter={1}
+      onFinishLevel={onFinishLevel}
+    />,
   );
 
-  return { onFinishLevel };
+  return { apiClient, onFinishLevel };
 }
 
-test('po kliknięciu linia zostaje zaznaczona, druga linia odznacza poprzednią', async () => {
-  renderView();
-
-  const line1 = await screen.findByText('Linia poprawna');
-  const line2 = screen.getByText('Linia błędna (do skreślenia)');
-
-  await userEvent.click(line1);
-
-  await waitFor(() => {
-    expect(line1).toHaveStyle('text-decoration: line-through');
+describe('CrossoutView', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    jest.clearAllMocks();
   });
 
-  await userEvent.click(line2);
+  test('submits crossed-out line ids', async () => {
+    const user = userEvent.setup();
+    const { apiClient, onFinishLevel } = renderView();
 
-  await waitFor(() => {
-    expect(line2).toHaveStyle('text-decoration: line-through');
+    await user.click(await screen.findByRole('button', { name: 'Linia do skreślenia' }));
+    await user.click(screen.getByRole('button', { name: /finish level/i }));
+
+    await waitFor(() => expect(apiClient.submitCrossoutAnswers).toHaveBeenCalledTimes(1));
+    expect(apiClient.submitCrossoutAnswers).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'crossout',
+        gameId: 101,
+        crossedOutLineIds: ['l2'],
+      }),
+    );
+    expect(onFinishLevel).toHaveBeenCalledWith(expectedGameResults);
   });
 });

@@ -1,4 +1,3 @@
-// src/components/genreTranslations.ts
 import type { Language } from '../i18n';
 
 const GENRE_LABELS: Record<string, { en: string; pl: string }> = {

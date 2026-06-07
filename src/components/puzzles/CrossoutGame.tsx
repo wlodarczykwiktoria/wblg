@@ -1,8 +1,7 @@
-// src/components/puzzles/CrossoutGame.tsx
-
 import React from 'react';
 import { Box, Text, VStack } from '@chakra-ui/react';
-import type { CrossoutLine, CrossoutRiddle } from '../../api/modelV2';
+import type { CrossoutRiddle } from '../../api/model.ts';
+import { puzzleCardProps } from '../../utils/puzzleStyles';
 
 type Props = {
   riddle: CrossoutRiddle;
@@ -10,27 +9,13 @@ type Props = {
   onToggle(lineId: string): void;
 };
 
-function getLines(riddle: CrossoutRiddle): CrossoutLine[] {
-  return riddle.lines;
-}
-
 export const CrossoutGame: React.FC<Props> = ({ riddle, selectedLineIds, onToggle }) => {
-  const lines = getLines(riddle);
+  const { lines } = riddle;
 
   return (
     <Box mt={4}>
-      <Box
-        bg="white"
-        borderRadius="32px"
-        boxShadow="0 18px 50px rgba(15, 23, 42, 0.10)"
-        border="1px solid #ECEAF6"
-        px={{ base: 6, md: 10 }}
-        py={{ base: 6, md: 8 }}
-      >
-        <VStack
-          align="stretch"
-          gap={3}
-        >
+      <Box {...puzzleCardProps}>
+        <VStack align="stretch" gap={3}>
           {lines.map((line) => {
             const selected = selectedLineIds.includes(line.id);
 

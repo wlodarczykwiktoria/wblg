@@ -1,45 +1,24 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { chooseFirstBook, chooseGame, openHome } from './helpers';
 
-const baseURL = 'http://localhost:5173';
+test('home lets the user choose a game and a book without leaving the page', async ({ page }) => {
+  await openHome(page);
 
-test('Home - Choose game - Back - Choose book - Back', async ({ page }) => {
-  await page.goto(baseURL);
+  await chooseGame(page, /anagram/i);
+  await expect(page.getByText(/anagram/i).first()).toBeVisible();
 
-  await expect(
-    page
-      .getByRole('heading', {
-        name: /polish literature language game/i,
-      })
-      .first(),
-  ).toBeVisible();
+  await chooseFirstBook(page);
+  await expect(page.getByText('Pan Tadeusz').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /start game/i })).toBeEnabled();
+});
 
-  const chooseGameBtn = page.getByRole('button', { name: /choose game/i });
-  const chooseBookBtn = page.getByRole('button', { name: /choose book/i });
+test('language switch updates translatable home copy', async ({ page }) => {
+  await openHome(page);
 
-  await expect(chooseGameBtn).toBeVisible();
-  await expect(chooseBookBtn).toBeVisible();
+  await page.getByRole('combobox').first().selectOption('pl');
 
-  await chooseGameBtn.click();
-  await expect(page.getByRole('heading', { name: /choose game/i })).toBeVisible();
-  await page.getByRole('button', { name: /back/i }).click();
-
-  await expect(
-    page
-      .getByRole('heading', {
-        name: /polish literature language game/i,
-      })
-      .first(),
-  ).toBeVisible();
-
-  await chooseBookBtn.click();
-  await expect(page.getByRole('heading', { name: /choose book/i })).toBeVisible();
-  await page.getByRole('button', { name: /back/i }).click();
-
-  await expect(
-    page
-      .getByRole('heading', {
-        name: /polish literature language game/i,
-      })
-      .first(),
-  ).toBeVisible();
+  await expect(page.getByText(/wybierz tryb gry i książkę, aby rozpocząć/i)).toBeVisible();
+  await expect(page.getByRole('button', { name: /^wybierz grę$/i }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /^wybierz książkę$/i }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /^rozpocznij grę$/i })).toBeDisabled();
 });

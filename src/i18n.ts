@@ -28,6 +28,7 @@ export type Translations = {
   completedChaptersLabel: string;
   startGameLabel: string;
   chooseChapterLabel: string;
+  chapterLabel: string;
   startGameConfirmTitle: string;
   startGameConfirmMessage: string;
   startGameConfirmYes: string;
@@ -50,6 +51,7 @@ export type Translations = {
   needAnswerAllLabel: string;
   pauseLabel: string;
   resumeLabel: string;
+  pauseMessageFallback: string;
 
   timeLeftLabel: string;
   puzzleOfLabel: string;
@@ -73,7 +75,7 @@ export type Translations = {
   nextExtractLabel: string;
   backToLibraryLabel: string;
 
-  // Spellcheck (game) UI
+  // Spellcheck
   spellcheckHeading: string;
   spellcheckInstructions: string;
   spellcheckNeedSelectionLabel: string;
@@ -109,6 +111,75 @@ export type Translations = {
   choicePauseMessage: string;
   choiceOptionsTitle: string;
   choiceOptionsHint: string;
+
+  cancelLabel: string;
+  closeLabel: string;
+  selectLabel: string;
+  loadingLabel: string;
+  noGameFallback: string;
+  noBookFallback: string;
+  noBookSelectedLabel: string;
+  chooseBookContinueLabel: string;
+
+  homeLead: string;
+  homeReadyLabel: string;
+  homeChooseBothLabel: string;
+  gameModeEyebrow: string;
+  bookEyebrow: string;
+  changeGameModeLabel: string;
+  chooseGameButtonLabel: string;
+  changeBookLabel: string;
+  chooseBookButtonLabel: string;
+  homeFooterHint: string;
+  homeSetupLabel: string;
+  randomGameDescription: string;
+
+  paginationPerPageLabel: string;
+  paginationPrevLabel: string;
+  paginationPageLabel: string;
+  paginationNextLabel: string;
+  chapterCompletedSuffix: string;
+  filtersTitle: string;
+  filtersAuthorsLabel: string;
+  filtersGenresLabel: string;
+  filtersPublicationYearLabel: string;
+  filtersClearLabel: string;
+  filtersApplyLabel: string;
+
+  nickTitle: string;
+  nickDescription: string;
+  nickPlaceholder: string;
+  nickSubmitLabel: string;
+  nickCreatingLabel: string;
+  nickConnectingLabel: string;
+  nickEmptyError: string;
+  nickTooLongError: string;
+  nickCreateError: string;
+
+  interruptGameTitle: string;
+  interruptGameMessage: string;
+  goToProgressLabel: string;
+
+  progressCompletedChaptersLabel: string;
+  progressSummaryLabel: string;
+  progressAvgAccuracyLabel: string;
+  progressAvgDurationLabel: string;
+  progressMostPlayedLabel: string;
+  progressReadingHeading: string;
+  progressReadingDescription: string;
+  progressColumnLabel: string;
+  progressDetailsLabel: string;
+  progressNoBooksLabel: string;
+
+  resultTitleLow: string;
+  resultTitleStart: string;
+  resultTitleGood: string;
+  resultTitleGreat: string;
+  resultTitleExcellent: string;
+
+  gameModeNotSelectedLabel: string;
+  chooseGameModeToBeginLabel: string;
+  gameModeSelectedLabel: string;
 };
 
 export const translations: Record<Language, Translations> = {
@@ -138,6 +209,7 @@ export const translations: Record<Language, Translations> = {
     completedChaptersLabel: 'Chapters completed',
     startGameLabel: 'Start game',
     chooseChapterLabel: 'Choose chapter',
+    chapterLabel: 'Chapter',
     startGameConfirmTitle: 'Start over?',
     startGameConfirmMessage:
       'Are you sure you want to start from the beginning? This will remove your current progress.',
@@ -161,6 +233,7 @@ export const translations: Record<Language, Translations> = {
     needAnswerAllLabel: 'Fill all gaps in this puzzle to continue.',
     pauseLabel: 'Pause',
     resumeLabel: 'Resume',
+    pauseMessageFallback: 'The game is paused. You can resume at any time.',
 
     timeLeftLabel: 'Time',
     puzzleOfLabel: 'Puzzle',
@@ -212,8 +285,77 @@ export const translations: Record<Language, Translations> = {
     choiceNeedSelectionLabel: 'Answer all gaps before moving on.',
     choiceNoDataLabel: 'No data for this game.',
     choicePauseMessage: 'The game is paused. Click "Resume" to continue.',
-    choiceOptionsTitle: 'Choose a word',
-    choiceOptionsHint: 'Click a gap in the text to see possible answers.',
+    choiceOptionsTitle: 'Choose an option',
+    choiceOptionsHint: 'Click a gap to see options.',
+
+    cancelLabel: 'Cancel',
+    closeLabel: 'Close',
+    selectLabel: 'Select',
+    loadingLabel: 'Loading…',
+    noGameFallback: 'No game',
+    noBookFallback: 'No book',
+    noBookSelectedLabel: 'No book selected',
+    chooseBookContinueLabel: 'Choose a book to continue.',
+
+    homeLead: 'Choose a game mode and a book to begin.',
+    homeReadyLabel: 'Both selected to start',
+    homeChooseBothLabel: 'Choose both to start',
+    gameModeEyebrow: 'Game mode',
+    bookEyebrow: 'Book',
+    changeGameModeLabel: 'Change game mode',
+    chooseGameButtonLabel: 'Choose game',
+    changeBookLabel: 'Change book',
+    chooseBookButtonLabel: 'Choose book',
+    homeFooterHint: 'You can change your choices anytime before starting.',
+    homeSetupLabel: 'Your setup',
+    randomGameDescription: 'Randomly pick one of the available games.',
+
+    paginationPerPageLabel: 'Per page:',
+    paginationPrevLabel: 'Prev',
+    paginationPageLabel: 'Page',
+    paginationNextLabel: 'Next',
+    chapterCompletedSuffix: 'completed',
+    filtersTitle: 'Filters',
+    filtersAuthorsLabel: 'Authors',
+    filtersGenresLabel: 'Genres',
+    filtersPublicationYearLabel: 'Publication year',
+    filtersClearLabel: 'Clear filters',
+    filtersApplyLabel: 'Apply',
+
+    nickTitle: "Hey, What's your name?",
+    nickDescription: 'This helps us personalize your results.',
+    nickPlaceholder: 'Enter your name…',
+    nickSubmitLabel: "Let's go",
+    nickCreatingLabel: 'Creating session…',
+    nickConnectingLabel: 'Connecting…',
+    nickEmptyError: 'Please enter your name.',
+    nickTooLongError: 'Max 50 characters.',
+    nickCreateError: 'Failed to create session.',
+
+    interruptGameTitle: 'Interrupt current game?',
+    interruptGameMessage: 'The current game will be stopped and your in-progress state for this round will be lost.',
+    goToProgressLabel: 'Go to progress',
+
+    progressCompletedChaptersLabel: 'Chapters completed',
+    progressSummaryLabel: 'Summary',
+    progressAvgAccuracyLabel: 'Avg accuracy',
+    progressAvgDurationLabel: 'Avg duration',
+    progressMostPlayedLabel: 'Most played',
+    progressReadingHeading: 'Your Reading Progress',
+    progressReadingDescription: 'Check your completed chapters, scores, time, and summary for each book.',
+    progressColumnLabel: 'Progress',
+    progressDetailsLabel: 'Details',
+    progressNoBooksLabel: 'No books to display.',
+
+    resultTitleLow: "Don't give up!",
+    resultTitleStart: 'Good start!',
+    resultTitleGood: 'Good job!',
+    resultTitleGreat: 'Excellent work!',
+    resultTitleExcellent: 'Amazing work!',
+
+    gameModeNotSelectedLabel: 'No game selected',
+    chooseGameModeToBeginLabel: 'Choose a game mode to begin.',
+    gameModeSelectedLabel: 'Game mode selected.',
   },
 
   pl: {
@@ -242,6 +384,7 @@ export const translations: Record<Language, Translations> = {
     completedChaptersLabel: 'Ukończone rozdziały',
     startGameLabel: 'Rozpocznij grę',
     chooseChapterLabel: 'Wybierz rozdział',
+    chapterLabel: 'Rozdział',
     startGameConfirmTitle: 'Rozpocząć od nowa?',
     startGameConfirmMessage: 'Czy na pewno chcesz rozpocząć od nowa? Usunie to obecny postęp.',
     startGameConfirmYes: 'Tak, rozpocznij od nowa',
@@ -264,6 +407,7 @@ export const translations: Record<Language, Translations> = {
     needAnswerAllLabel: 'Uzupełnij wszystkie luki w tym zadaniu, aby przejść dalej.',
     pauseLabel: 'Pauza',
     resumeLabel: 'Wznów',
+    pauseMessageFallback: 'Gra jest wstrzymana. Możesz w każdej chwili wznowić.',
 
     timeLeftLabel: 'Czas',
     puzzleOfLabel: 'Zadanie',
@@ -316,7 +460,76 @@ export const translations: Record<Language, Translations> = {
     choiceNeedSelectionLabel: 'Uzupełnij wszystkie luki przed przejściem dalej.',
     choiceNoDataLabel: 'Brak danych do tej gry.',
     choicePauseMessage: 'Gra jest wstrzymana. Kliknij „Wznów”, aby kontynuować.',
-    choiceOptionsTitle: 'Wybierz słowo',
-    choiceOptionsHint: 'Kliknij lukę w tekście, aby zobaczyć możliwe odpowiedzi.',
+    choiceOptionsTitle: 'Wybierz opcję',
+    choiceOptionsHint: 'Kliknij lukę, aby zobaczyć opcje.',
+
+    cancelLabel: 'Anuluj',
+    closeLabel: 'Zamknij',
+    selectLabel: 'Wybierz',
+    loadingLabel: 'Ładowanie…',
+    noGameFallback: 'Brak gry',
+    noBookFallback: 'Brak książki',
+    noBookSelectedLabel: 'Nie wybrano książki',
+    chooseBookContinueLabel: 'Wybierz książkę, aby kontynuować.',
+
+    homeLead: 'Wybierz tryb gry i książkę, aby rozpocząć.',
+    homeReadyLabel: 'Gotowe do startu',
+    homeChooseBothLabel: 'Wybierz grę i książkę',
+    gameModeEyebrow: 'Tryb gry',
+    bookEyebrow: 'Książka',
+    changeGameModeLabel: 'Zmień tryb gry',
+    chooseGameButtonLabel: 'Wybierz grę',
+    changeBookLabel: 'Zmień książkę',
+    chooseBookButtonLabel: 'Wybierz książkę',
+    homeFooterHint: 'Możesz zmienić swój wybór w dowolnym momencie przed rozpoczęciem.',
+    homeSetupLabel: 'Twój wybór',
+    randomGameDescription: 'Wybierz losowo jedną z dostępnych gier.',
+
+    paginationPerPageLabel: 'Na stronę:',
+    paginationPrevLabel: 'Poprzednia',
+    paginationPageLabel: 'Strona',
+    paginationNextLabel: 'Następna',
+    chapterCompletedSuffix: 'ukończony',
+    filtersTitle: 'Filtry',
+    filtersAuthorsLabel: 'Autorzy',
+    filtersGenresLabel: 'Gatunki',
+    filtersPublicationYearLabel: 'Rok wydania',
+    filtersClearLabel: 'Usuń filtry',
+    filtersApplyLabel: 'Filtruj',
+
+    nickTitle: 'Hej, jak masz na imię?',
+    nickDescription: 'To pomoże nam spersonalizować Twoje wyniki.',
+    nickPlaceholder: 'Wpisz imię…',
+    nickSubmitLabel: 'Zaczynamy',
+    nickCreatingLabel: 'Tworzenie sesji…',
+    nickConnectingLabel: 'Łączenie…',
+    nickEmptyError: 'Podaj imię.',
+    nickTooLongError: 'Maksymalnie 50 znaków.',
+    nickCreateError: 'Nie udało się utworzyć sesji.',
+
+    interruptGameTitle: 'Przerwać aktualną grę?',
+    interruptGameMessage: 'Gra zostanie przerwana, a obecny postęp w tej rundzie zostanie utracony.',
+    goToProgressLabel: 'Przejdź do postępu',
+
+    progressCompletedChaptersLabel: 'Ukończone rozdziały',
+    progressSummaryLabel: 'Podsumowanie',
+    progressAvgAccuracyLabel: 'Śr. dokładność',
+    progressAvgDurationLabel: 'Śr. czas',
+    progressMostPlayedLabel: 'Najczęstsza gra',
+    progressReadingHeading: 'Twój postęp czytania',
+    progressReadingDescription: 'Sprawdź ukończone rozdziały, wyniki, czas oraz podsumowanie każdej książki.',
+    progressColumnLabel: 'Postęp',
+    progressDetailsLabel: 'Szczegóły',
+    progressNoBooksLabel: 'Brak książek do wyświetlenia.',
+
+    resultTitleLow: 'Nie poddawaj się!',
+    resultTitleStart: 'Dobry początek!',
+    resultTitleGood: 'Dobra robota!',
+    resultTitleGreat: 'Świetna robota!',
+    resultTitleExcellent: 'Brawo!',
+
+    gameModeNotSelectedLabel: 'Nie wybrano gry',
+    chooseGameModeToBeginLabel: 'Wybierz tryb gry, aby rozpocząć.',
+    gameModeSelectedLabel: 'Wybrano tryb gry.',
   },
 };

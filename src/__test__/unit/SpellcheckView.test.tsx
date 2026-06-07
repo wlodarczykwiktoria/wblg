@@ -1,86 +1,62 @@
-import { render, screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
-import { SpellcheckView } from '../../components/SpellcheckView';
-import { act } from 'react';
-
-const riddleMock = {
-  prompt: {
-    words: [
-      { id: 'w1', value: 'Litwo,' },
-      { id: 'w2', value: 'Ojczyzno' },
-      { id: 'w3', value: 'moja!' },
-      { id: 'w4', value: 'zdrowie' },
-    ],
-  },
-  correctWordIds: ['w4'],
-} as never;
-
-const apiClientMock = {
-  startSpellcheckGame: jest.fn().mockResolvedValue([{ gameId: 1, riddle: riddleMock }]),
-  submitSpellcheckAnswers: jest.fn().mockResolvedValue({
-    score: 90,
-    mistakes: 0,
-    time: '0:05',
-    accuracy: 0.9,
-    pagesCompleted: 1,
-  }),
-  createResults: jest.fn().mockResolvedValue(null),
-} as never;
+import { SpellcheckView } from '../../components/SpellcheckView.tsx';
+import { expectedGameResults, spellcheckRiddle, startResponse } from '../fixtures.ts';
+import { makeApiClientDouble } from './testApiClient.ts';
+import { renderWithChakra } from './renderWithChakra.tsx';
 
 function renderView() {
+  const apiClient = makeApiClientDouble({
+    startSpellcheckGame: jest.fn().mockResolvedValue(startResponse(spellcheckRiddle)),
+  });
   const onFinishLevel = jest.fn();
 
-  render(
-    <ChakraProvider value={defaultSystem}>
-      <SpellcheckView
-        apiClient={apiClientMock}
-        extractId={1}
-        type="spellcheck"
-        language="en"
-        bookId={1}
-        chapter={1}
-        onBackToHome={jest.fn()}
-        onFinishLevel={onFinishLevel}
-      />
-    </ChakraProvider>,
+  renderWithChakra(
+    <SpellcheckView
+      apiClient={apiClient}
+      type="spellcheck"
+      language="en"
+      bookId={1}
+      chapter={1}
+      onFinishLevel={onFinishLevel}
+    />,
   );
 
-  return { onFinishLevel };
+  return { apiClient, onFinishLevel };
 }
 
-test('zaznaczenie słowa po kliknięciu, odznaczenie po drugim', async () => {
-  renderView();
-
-  const word = await screen.findByText('zdrowie');
-  expect(word).toBeInTheDocument();
-
-  await userEvent.click(word);
-  await userEvent.click(word);
-
-  expect(screen.getByText('zdrowie')).toBeInTheDocument();
-});
-
-test('timer zwiększa wyświetlany czas w trakcie gry', async () => {
-  jest.useFakeTimers();
-
-  renderView();
-
-  const timeNode = await screen.findByText((content, element) => {
-    return element?.tagName.toLowerCase() === 'strong' && /^\d+:\d{2}$/.test(content);
+describe('SpellcheckView', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    jest.clearAllMocks();
   });
 
-  const before = timeNode.textContent;
+  test('submits the selected misspelled words', async () => {
+    const user = userEvent.setup();
+    const { apiClient, onFinishLevel } = renderView();
 
-  act(() => {
-    jest.advanceTimersByTime(5000);
+    await user.click(await screen.findByRole('button', { name: 'zdrowei' }));
+    await user.click(screen.getByRole('button', { name: /finish level/i }));
+
+    await waitFor(() => expect(apiClient.submitSpellcheckAnswers).toHaveBeenCalledTimes(1));
+    expect(apiClient.submitSpellcheckAnswers).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'spellcheck',
+        gameId: 101,
+        selectedWordIds: ['w4'],
+      }),
+    );
+    expect(onFinishLevel).toHaveBeenCalledWith(expectedGameResults);
   });
 
-  const afterNode = await screen.findByText((content, element) => {
-    return element?.tagName.toLowerCase() === 'strong' && /^\d+:\d{2}$/.test(content) && content !== before;
+  test('opens and closes the pause modal without leaving the puzzle', async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    expect(await screen.findByText('zdrowei')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /pause/i }));
+    await user.click(await screen.findByRole('button', { name: /resume/i }));
+
+    expect(screen.getByText('zdrowei')).toBeInTheDocument();
   });
-
-  expect(afterNode).toBeInTheDocument();
-
-  jest.useRealTimers();
 });

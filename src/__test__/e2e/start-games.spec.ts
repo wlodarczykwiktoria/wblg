@@ -1,80 +1,28 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test } from '@playwright/test';
+import { startGame } from './helpers';
 
-const baseURL = 'http://localhost:5173';
-
-async function selectFirstBookFromList(page: Page) {
-  const firstProgressCell = page.locator('text=/\\d+\\s*\\/\\s*\\d+/').first();
-  await expect(firstProgressCell).toBeVisible({ timeout: 20_000 });
-  await firstProgressCell.click();
-}
-
-async function waitForGameScreen(page: Page) {
-  const pauseBtn = page.getByRole('button', { name: /pause/i });
-  const finishBtn = page.getByRole('button', { name: /finish|zakończ/i });
-  const nextBtn = page.getByRole('button', { name: /next|dalej/i });
-  const prevBtn = page.getByRole('button', { name: /prev|wstecz/i });
-
-  if (await pauseBtn.isVisible().catch(() => false)) {
-    await expect(pauseBtn).toBeVisible({ timeout: 30_000 });
-    return;
-  }
-
-  if (await finishBtn.isVisible().catch(() => false)) {
-    await expect(finishBtn).toBeVisible({ timeout: 30_000 });
-    return;
-  }
-
-  if (await nextBtn.isVisible().catch(() => false)) {
-    await expect(nextBtn).toBeVisible({ timeout: 30_000 });
-    return;
-  }
-  if (await prevBtn.isVisible().catch(() => false)) {
-    await expect(prevBtn).toBeVisible({ timeout: 30_000 });
-    return;
-  }
-
-  const anyGameButton = page.getByRole('button', { name: /finish|pause|next|prev|reset|resume/i }).first();
-  await expect(anyGameButton).toBeVisible({ timeout: 30_000 });
-}
-
-async function startGame(page: Page, gameButtonName: RegExp) {
-  await page.goto(baseURL);
-
-  await page.getByRole('button', { name: /choose game/i }).click();
-  await expect(page.getByRole('heading', { name: /choose game/i })).toBeVisible();
-
-  await page.getByRole('button', { name: gameButtonName }).click();
-  await expect(page.getByRole('heading', { name: /choose book/i })).toBeVisible();
-
-  await selectFirstBookFromList(page);
-
-  await page.getByRole('button', { name: /start game/i }).click();
-
-  await waitForGameScreen(page);
-}
-
-test.describe('Uruchamianie gier', () => {
-  test('Spellcheck - można uruchomić', async ({ page }) => {
+test.describe('starting supported games', () => {
+  test('starts Spellcheck', async ({ page }) => {
     await startGame(page, /spellcheck/i);
   });
 
-  test('Anagram - można uruchomić', async ({ page }) => {
+  test('starts Anagram', async ({ page }) => {
     await startGame(page, /anagram/i);
   });
 
-  test('Switch game - można uruchomić', async ({ page }) => {
+  test('starts Swapped words', async ({ page }) => {
     await startGame(page, /swapped words/i);
   });
 
-  test('Fill the gaps - można uruchomić', async ({ page }) => {
+  test('starts Fill the gaps', async ({ page }) => {
     await startGame(page, /fill the gaps/i);
   });
 
-  test('Crossout - można uruchomić', async ({ page }) => {
+  test('starts Crossout', async ({ page }) => {
     await startGame(page, /crossout/i);
   });
 
-  test('Choice game - można uruchomić', async ({ page }) => {
+  test('starts Multiple choice gaps', async ({ page }) => {
     await startGame(page, /multiple choice gaps/i);
   });
 });

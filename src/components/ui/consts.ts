@@ -1,5 +1,4 @@
-import type { GameType } from '../../api/modelV2';
-import { GameCode } from '../../api/types';
+import { GameCode, type GameType } from '../../api/model.ts';
 
 export const GAME_TYPES: GameType[] = ['fill-gaps', 'spellcheck', 'crossout', 'anagram', 'switch', 'choice'];
 

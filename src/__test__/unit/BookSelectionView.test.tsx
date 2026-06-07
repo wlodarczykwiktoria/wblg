@@ -1,136 +1,72 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
-
-import { BookSelectionView } from '../../components/BookSelectionView';
-
-const sampleBooks = [
-  {
-    id: 1,
-    title: 'Solaris',
-    author: 'Stanisław Lem',
-    year: 1961,
-    genre: 'Science fiction',
-    chapters: 10,
-    completedChapters: 0,
-  },
-  { id: 2, title: 'Lalka', author: 'Bolesław Prus', year: 1890, genre: 'Novel', chapters: 10, completedChapters: 0 },
-  {
-    id: 3,
-    title: 'Pan Tadeusz',
-    author: 'Adam Mickiewicz',
-    year: 1834,
-    genre: 'Epic poem',
-    chapters: 10,
-    completedChapters: 0,
-  },
-];
-
-const sampleProgress: any[] = [];
-
-const BOOK_TITLES = sampleBooks.map((b) => b.title);
-const BOOK_AUTHORS = sampleBooks.map((b) => b.author);
-const BOOK_YEARS = sampleBooks.map((b) => String(b.year));
+import { BookSelectionView } from '../../components/BookSelectionView.tsx';
+import { books } from '../fixtures.ts';
+import { renderWithChakra } from './renderWithChakra.tsx';
 
 function renderView() {
   const onBookSelected = jest.fn();
 
-  const apiClientMock: any = {
-    getBooks: jest.fn().mockResolvedValue(sampleBooks),
-    getExtracts: jest.fn().mockResolvedValue([]),
-  };
-
-  render(
-    <ChakraProvider value={defaultSystem}>
-      <BookSelectionView
-        apiClient={apiClientMock}
-        language="en"
-        books={sampleBooks}
-        booksLoading={false}
-        progress={sampleProgress}
-        onBookSelected={onBookSelected}
-        onResetBookProgress={jest.fn()}
-      />
-    </ChakraProvider>,
+  renderWithChakra(
+    <BookSelectionView language="en" books={books} booksLoading={false} onBookSelected={onBookSelected} />,
   );
 
-  return { apiClientMock, onBookSelected };
+  return { onBookSelected };
 }
 
-async function waitForBooksToRender() {
-  await screen.findByText('Solaris');
-  await screen.findByText('Lalka');
-  await screen.findByText('Pan Tadeusz');
-}
+const titleSet = new Set(['Lalka', 'Pan Tadeusz', 'Solaris']);
 
-function getTitleOrder(): string[] {
-  const nodes = screen.getAllByText((content, node) => {
-    const text = content.trim();
-    return BOOK_TITLES.includes(text) && node?.tagName.toLowerCase() === 'p';
-  });
-  return nodes.map((n) => n.textContent?.trim() ?? '');
-}
-
-function getAuthorOrder(): string[] {
-  const nodes = screen.getAllByText((content, node) => {
-    const text = content.trim();
-    return BOOK_AUTHORS.includes(text) && node?.tagName.toLowerCase() === 'p';
-  });
-  return nodes.map((n) => n.textContent?.trim() ?? '');
-}
-
-function getYearOrder(): string[] {
-  const nodes = screen.getAllByText((content, node) => {
-    const text = content.trim();
-    return BOOK_YEARS.includes(text) && node?.tagName.toLowerCase() === 'p';
-  });
-  return nodes.map((n) => n.textContent?.trim() ?? '');
+function renderedBookTitles() {
+  return screen
+    .getAllByText((content, element) => titleSet.has(content.trim()) && element?.tagName.toLowerCase() === 'p')
+    .map((node) => node.textContent?.trim());
 }
 
 describe('BookSelectionView', () => {
-  test('renderuje listę książek', async () => {
+  test('renders the provided books in title order by default', () => {
     renderView();
 
-    await waitForBooksToRender();
+    expect(renderedBookTitles()).toEqual(['Lalka', 'Pan Tadeusz', 'Solaris']);
+  });
+
+  test('filters books when the query has at least three characters', async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    await user.type(screen.getByPlaceholderText(/search literature works/i), 'sol');
 
     expect(screen.getByText('Solaris')).toBeInTheDocument();
-    expect(screen.getByText('Lalka')).toBeInTheDocument();
-    expect(screen.getByText('Pan Tadeusz')).toBeInTheDocument();
+    expect(screen.queryByText('Lalka')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pan Tadeusz')).not.toBeInTheDocument();
   });
 
-  test('sortuje listę książek po roku po kliknięciu nagłówka "Year"', async () => {
-    renderView();
-    await waitForBooksToRender();
+  test('selects the first available chapter when a book has no completed chapters', async () => {
+    const user = userEvent.setup();
+    const { onBookSelected } = renderView();
 
-    const before = getYearOrder();
-    const yearHeader = screen.getByText(/year/i);
-    await userEvent.click(yearHeader);
-    const after = getYearOrder();
+    await user.click(screen.getByText('Pan Tadeusz'));
 
-    expect(after).not.toEqual(before);
+    expect(onBookSelected).toHaveBeenCalledWith(1, 0);
   });
 
-  test('sortuje listę książek po autorze po kliknięciu nagłówka "Author"', async () => {
-    renderView();
-    await waitForBooksToRender();
+  test('opens chapter selection for books with more than one available chapter', async () => {
+    const user = userEvent.setup();
+    const { onBookSelected } = renderView();
 
-    const before = getAuthorOrder();
-    const authorHeader = screen.getByText(/author/i);
-    await userEvent.click(authorHeader);
-    const after = getAuthorOrder();
+    await user.click(screen.getByText('Lalka'));
 
-    expect(after).not.toEqual(before);
+    expect(await screen.findByRole('heading', { name: /choose chapter/i })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /^select$/i }));
+
+    expect(onBookSelected).toHaveBeenCalledWith(2, 1);
   });
 
-  test('sortuje listę książek po tytule po kliknięciu nagłówka "Title"', async () => {
+  test('shows an empty-state message when no book matches the filter', async () => {
+    const user = userEvent.setup();
     renderView();
-    await waitForBooksToRender();
 
-    const before = getTitleOrder();
-    const titleHeader = screen.getByText(/title/i);
-    await userEvent.click(titleHeader);
-    const after = getTitleOrder();
+    await user.type(screen.getByPlaceholderText(/search literature works/i), 'xyz');
 
-    expect(after).not.toEqual(before);
+    expect(screen.getByText(/no books matching criteria/i)).toBeInTheDocument();
   });
 });

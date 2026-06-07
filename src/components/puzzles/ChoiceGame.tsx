@@ -1,8 +1,7 @@
-// src/components/puzzles/ChoiceGame.tsx
-
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Box, Button, HStack, Text } from '@chakra-ui/react';
-import type { ChoiceGap, ChoiceRiddle } from '../../api/modelV2';
+import type { ChoiceGap, ChoiceRiddle } from '../../api/model.ts';
+import { puzzleCardProps, puzzleOptionsCardProps } from '../../utils/puzzleStyles';
 
 type Props = {
   riddle: ChoiceRiddle;
@@ -13,6 +12,13 @@ type Props = {
   optionsTitle: string;
   optionsHint: string;
 };
+
+function mapGapsById(gaps: ChoiceGap[]): Record<string, ChoiceGap> {
+  return gaps.reduce<Record<string, ChoiceGap>>((result, gap) => {
+    result[gap.id] = gap;
+    return result;
+  }, {});
+}
 
 export const ChoiceGame: React.FC<Props> = ({
   riddle,
@@ -25,23 +31,12 @@ export const ChoiceGame: React.FC<Props> = ({
 }) => {
   const { parts, gaps } = riddle;
 
-  const gapsById: Record<string, ChoiceGap> = {};
-  gaps.forEach((g) => {
-    gapsById[g.id] = g;
-  });
-
+  const gapsById = useMemo(() => mapGapsById(gaps), [gaps]);
   const activeGap = activeGapId ? gapsById[activeGapId] : null;
 
   return (
     <Box mt={4}>
-      <Box
-        bg="white"
-        borderRadius="32px"
-        boxShadow="0 18px 50px rgba(15, 23, 42, 0.10)"
-        border="1px solid #ECEAF6"
-        px={{ base: 6, md: 10 }}
-        py={{ base: 6, md: 8 }}
-      >
+      <Box {...puzzleCardProps}>
         <Text
           fontSize={{ base: 'lg', md: '2xl' }}
           lineHeight="1.9"
@@ -60,10 +55,12 @@ export const ChoiceGame: React.FC<Props> = ({
               );
             }
 
-            const gapId = part.gapId;
-            const selectedOptionId = selectedOptionsByGap[gapId] ?? null;
+            const { gapId } = part;
             const gap = gapsById[gapId];
-            const selectedLabel = selectedOptionId && gap?.options.find((o) => o.id === selectedOptionId)?.label;
+            const selectedOptionId = selectedOptionsByGap[gapId] ?? null;
+            const selectedLabel = selectedOptionId
+              ? gap?.options.find((option) => option.id === selectedOptionId)?.label
+              : null;
 
             return (
               <Box
@@ -101,16 +98,11 @@ export const ChoiceGame: React.FC<Props> = ({
 
       <Box
         mt={6}
-        bg="white"
-        borderRadius="28px"
-        boxShadow="0 12px 32px rgba(15, 23, 42, 0.08)"
-        border="1px solid #ECEAF6"
-        px={{ base: 6, md: 8 }}
-        py={{ base: 6, md: 7 }}
         minH="120px"
         display="flex"
         flexDirection="column"
         justifyContent="flex-start"
+        {...puzzleOptionsCardProps}
       >
         <Text
           mb={4}
@@ -127,32 +119,35 @@ export const ChoiceGame: React.FC<Props> = ({
             justify="center"
             gap={3}
           >
-            {activeGap.options.map((opt) => {
-              const isSelected = selectedOptionsByGap[activeGap.id] === opt.id;
+            {activeGap.options.map((option) => {
+              const selected = selectedOptionsByGap[activeGap.id] === option.id;
 
               return (
                 <Button
-                  key={opt.id}
+                  key={option.id}
                   px={5}
                   py={2}
                   borderWidth="1px"
                   borderRadius="full"
-                  bg={isSelected ? 'green.50' : 'gray.50'}
-                  borderColor={isSelected ? 'green.300' : 'gray.200'}
+                  bg={selected ? 'green.50' : 'gray.50'}
+                  borderColor={selected ? 'green.300' : 'gray.200'}
                   boxShadow="none"
                   cursor="pointer"
                   userSelect="none"
                   fontSize="md"
                   fontWeight="500"
-                  color={isSelected ? 'green.700' : 'gray.800'}
+                  color={selected ? 'green.700' : 'gray.800'}
                   size="sm"
                   variant="outline"
                   transition="all 0.2s"
-                  _hover={{ bg: isSelected ? 'green.50' : 'gray.100', transform: 'translateY(-2px)' }}
+                  _hover={{
+                    bg: selected ? 'green.50' : 'gray.100',
+                    transform: 'translateY(-2px)',
+                  }}
                   _active={{ transform: 'translateY(0)' }}
-                  onClick={() => onSelectOption(activeGap.id, opt.id)}
+                  onClick={() => onSelectOption(activeGap.id, option.id)}
                 >
-                  {opt.label}
+                  {option.label}
                 </Button>
               );
             })}

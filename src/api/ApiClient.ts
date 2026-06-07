@@ -1,18 +1,7 @@
-// src/api/ApiClient.ts
-
-import type {
-  Book,
-  Extract,
-  Game,
-  Level,
-  Riddle,
-  RiddleOption,
-  RiddlePart,
-  SubmitAnswerResponse,
-  FinishLevelResponse,
-  ResultsResponse,
-} from './types';
-import { GameCode } from './types';
+import type { Book, Extract, FillGapsResponse, Game } from './model.ts';
+import { GameCode } from './model.ts';
+import { API_BASE_URL, GAME_SERVICE_BASE_URL } from '../config/env';
+import { getSessionId } from '../shared/utils/session.utils';
 
 import type {
   AnagramRiddle,
@@ -28,23 +17,13 @@ import type {
   SwitchAnswerRequest,
   ResultsCreateRequest,
   ResultsSummaryResponse,
+  ResultsLatestResponse,
   GameAnswerResponse,
-} from './modelV2';
+} from './model.ts';
 
-import {
-  anagramMockResponse,
-  choiceMockResponse,
-  crossoutMockResponse,
-  spellcheckMockResponse,
-  switchMockResponse,
-} from './mockExamples';
 
-export interface Test {
-  riddle: Riddle;
-  gameId: number;
-}
 
-const MOCK_BOOKS: Book[] = [
+const FALLBACK_BOOKS: Book[] = [
   {
     id: 1,
     title: 'Pan Tadeusz',
@@ -111,7 +90,7 @@ const MOCK_BOOKS: Book[] = [
   },
 ];
 
-const GAMES: Game[] = [
+const AVAILABLE_GAMES: Game[] = [
   {
     id: 1,
     code: GameCode.FillTheGaps,
@@ -168,51 +147,6 @@ const GAMES: Game[] = [
   },
 ];
 
-const SPELLCHECK_RIDDLES: SpellcheckRiddle[] = Array.from({ length: 5 }).map(() => spellcheckMockResponse.riddle);
-const CROSSOUT_RIDDLES: CrossoutRiddle[] = Array.from({ length: 5 }).map(() => crossoutMockResponse.riddle);
-const ANAGRAM_RIDDLES: AnagramRiddle[] = Array.from({ length: 5 }).map(() => anagramMockResponse.riddle);
-const SWITCH_RIDDLES: SwitchRiddle[] = Array.from({ length: 5 }).map(() => switchMockResponse.riddle);
-const CHOICE_RIDDLES: ChoiceRiddle[] = Array.from({ length: 5 }).map(() => choiceMockResponse.riddle);
-
-const BASE_PARTS: RiddlePart[] = [
-  { type: 'text', value: 'Litwo! Ojczyzno moja! ty jesteś jak ' },
-  { type: 'gap', id: 'g1' },
-  { type: 'text', value: ';\nIle cię trzeba ' },
-  { type: 'gap', id: 'g2' },
-  { type: 'text', value: ', ten tylko się dowie,\nKto cię ' },
-  { type: 'gap', id: 'g3' },
-  { type: 'text', value: '. Dziś piękność twą w całej ' },
-  { type: 'gap', id: 'g4' },
-  { type: 'text', value: '\nW ' },
-  { type: 'gap', id: 'g5' },
-  { type: 'text', value: ' nazwach widzę i opisuję,\nBo tęskno mi za tobą i ' },
-  { type: 'gap', id: 'g6' },
-  { type: 'text', value: '.' },
-];
-
-const VARIANT_PREFIXES: string[] = [
-  'Litwo! Ojczyzno moja! ty jesteś jak ',
-  'Ojczyzno moja! jak wiele w Tobie jest jak ',
-  'Kraju rodzinny, dla mnie jesteś niczym ',
-  'Ziemio rodzinna! w pamięci jawisz się jak ',
-  'Młodości wspomnienie! ty jesteś mi niczym ',
-];
-
-function makeVariantParts(prefix: string): RiddlePart[] {
-  const parts = [...BASE_PARTS];
-  parts[0] = { type: 'text', value: prefix };
-  return parts;
-}
-
-const MOCK_OPTIONS: RiddleOption[] = [
-  { id: 'w1', label: 'zdrowie' },
-  { id: 'w2', label: 'cenić' },
-  { id: 'w3', label: 'stracił' },
-  { id: 'w4', label: 'ozdobie' },
-  { id: 'w5', label: 'porządku' },
-  { id: 'w6', label: 'płaczę' },
-];
-
 type StartGameRequest = {
   bookId: number;
   gameType: string;
@@ -226,374 +160,226 @@ type StartCrossoutResponse = { gameId: number; riddle: CrossoutRiddle };
 type StartSwitchResponse = { gameId: number; riddle: SwitchRiddle };
 
 export class ApiClient {
-  constructor(private readonly baseUrl: string) {}
+  constructor(private readonly baseUrl: string = API_BASE_URL) {}
 
-  private readonly gameServiceBaseUrl =
-    'https://plblg-1005982046749.europe-west1.run.app';
+  private readonly gameServiceBaseUrl = GAME_SERVICE_BASE_URL;
 
   private booksCache: Book[] | null = null;
 
   private getSessionIdFromStorage(): string | null {
+    return getSessionId();
+  }
+
+  private async requestJson<T>(url: string, init: RequestInit, errorPrefix: string): Promise<T> {
+    const response = await fetch(url, init);
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(`${errorPrefix}: ${response.status} ${text}`);
+    }
+
+    return (await response.json()) as T;
+  }
+
+  private async requestOptionalJson(url: string, init: RequestInit, errorPrefix: string): Promise<unknown> {
+    const response = await fetch(url, init);
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(`${errorPrefix}: ${response.status} ${text}`);
+    }
+
     try {
-      return localStorage.getItem('session_id');
+      return await response.json();
     } catch {
       return null;
     }
   }
 
+  private async startGame<T>(gameType: string, bookId: number, chapter: number, errorPrefix: string): Promise<T> {
+    const body: StartGameRequest = { bookId, gameType, chapter };
+
+    return this.requestJson<T>(
+      `${this.gameServiceBaseUrl}/games/${gameType}/start`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+      errorPrefix,
+    );
+  }
+
+  private async submitGame<T>(gameType: string, body: unknown, errorPrefix: string): Promise<T> {
+    return this.requestJson<T>(
+      `${this.gameServiceBaseUrl}/games/${gameType}/submit`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+      errorPrefix,
+    );
+  }
+
+  private useFallbackBooks(): Book[] {
+    this.booksCache = FALLBACK_BOOKS;
+    return FALLBACK_BOOKS;
+  }
+
   async getGames(): Promise<Game[]> {
-    return Promise.resolve(GAMES);
+    return AVAILABLE_GAMES;
+  }
+
+  async createSessionWithNick(nick: string): Promise<string> {
+    const data = await this.requestJson<{ session_id?: string }>(
+      `${this.baseUrl}/session`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nick }),
+      },
+      'Create session failed',
+    );
+
+    if (!data.session_id) {
+      throw new Error('No session_id returned from backend');
+    }
+
+    return data.session_id;
   }
 
   async getBooks(sessionId: string): Promise<Book[]> {
-    if (this.baseUrl) {
-      try {
-        const res = await fetch(`${this.baseUrl}/books`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json', 'X-Session-Id': sessionId },
-        });
-        if (!res.ok) {
-          this.booksCache = MOCK_BOOKS;
-          return MOCK_BOOKS;
-        }
-
-        const data = (await res.json()) as Book[];
-        this.booksCache = data; 
-        return data;
-      } catch {
-        this.booksCache = MOCK_BOOKS;
-        return MOCK_BOOKS;
-      }
+    if (!this.baseUrl) {
+      return this.useFallbackBooks();
     }
 
-    this.booksCache = MOCK_BOOKS;
-    return Promise.resolve(MOCK_BOOKS);
+    try {
+      const books = await this.requestJson<Book[]>(
+        `${this.baseUrl}/books`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json', 'X-Session-Id': sessionId },
+        },
+        'Books request failed',
+      );
+
+      this.booksCache = books;
+      return books;
+    } catch {
+      return this.useFallbackBooks();
+    }
   }
 
   async getExtracts(bookId: number): Promise<Extract[]> {
-    let book = this.booksCache?.find((b) => b.id === bookId) ?? null;
+    let book = this.booksCache?.find((item) => item.id === bookId) ?? null;
 
     if (!book) {
       const sessionId = this.getSessionIdFromStorage();
       if (sessionId) {
         const books = await this.getBooks(sessionId);
-        book = books.find((b) => b.id === bookId) ?? null;
+        book = books.find((item) => item.id === bookId) ?? null;
       }
     }
 
     const chapters = book?.chapters ?? 0;
 
-    return Array.from({ length: chapters }, (_, i) => ({
-      id: i + 1,
-      orderNo: i + 1,
-      title: `Chapter ${i + 1}`,
+    return Array.from({ length: chapters }, (_, index) => ({
+      id: index + 1,
+      orderNo: index + 1,
+      title: `Chapter ${index + 1}`,
     }));
   }
 
-  async createLevel(_extractId: number, type: string): Promise<Level> {
-    // (pozostawione — nadal używane tylko w starych ścieżkach)
-    return Promise.resolve({ levelId: 1, type });
-  }
-
-  async getRiddles(levelId: number): Promise<Riddle[]> {
-    console.log('getRiddles mock for level:', levelId);
-    const riddles: Riddle[] = VARIANT_PREFIXES.map((prefix, idx) => ({
-      id: idx + 1,
-      prompt: { parts: makeVariantParts(prefix) },
-      options: MOCK_OPTIONS,
-    }));
-    return Promise.resolve(riddles);
-  }
-
-  // =========================
-  // ===== REAL START/SUBMIT ==
-  // =========================
-
-  async startFillGapsGame(bookId: number, chapter: number): Promise<Test[]> {
-    const body: StartGameRequest = { bookId, gameType: 'fill-gaps', chapter };
-
-    const res = await fetch(`${this.gameServiceBaseUrl}/games/fill-gaps/start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`FillGaps start failed: ${res.status} ${text}`);
-    }
-
-    return (await res.json()) as Test[];
+  async startFillGapsGame(bookId: number, chapter: number): Promise<FillGapsResponse[]> {
+    return this.startGame<FillGapsResponse[]>('fill-gaps', bookId, chapter, 'FillGaps start failed');
   }
 
   async submitFillGapsAnswers(body: FillGapsAnswerRequest): Promise<GameAnswerResponse> {
-    const res = await fetch(`${this.gameServiceBaseUrl}/games/fill-gaps/submit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`FillGaps submit failed: ${res.status} ${text}`);
-    }
-
-    return await res.json();
+    return this.submitGame<GameAnswerResponse>('fill-gaps', body, 'FillGaps submit failed');
   }
 
   async startAnagramGame(bookId: number, chapter: number): Promise<StartAnagramResponse[]> {
-    const body: StartGameRequest = { bookId, gameType: 'anagram', chapter };
-
-    const res = await fetch(`${this.gameServiceBaseUrl}/games/anagram/start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Anagram start failed: ${res.status} ${text}`);
-    }
-
-    return (await res.json()) as StartAnagramResponse[];
+    return this.startGame<StartAnagramResponse[]>('anagram', bookId, chapter, 'Anagram start failed');
   }
 
   async submitAnagramAnswers(body: AnagramAnswerRequest): Promise<GameAnswerResponse> {
-    const res = await fetch(`${this.gameServiceBaseUrl}/games/anagram/submit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Anagram submit failed: ${res.status} ${text}`);
-    }
-
-    return await res.json();
+    return this.submitGame<GameAnswerResponse>('anagram', body, 'Anagram submit failed');
   }
 
   async startChoiceGame(bookId: number, chapter: number): Promise<StartChoiceResponse[]> {
-    const body: StartGameRequest = { bookId, gameType: 'choice', chapter };
-
-    const res = await fetch(`${this.gameServiceBaseUrl}/games/choice/start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Choice start failed: ${res.status} ${text}`);
-    }
-
-    return (await res.json()) as StartChoiceResponse[];
+    return this.startGame<StartChoiceResponse[]>('choice', bookId, chapter, 'Choice start failed');
   }
 
   async submitChoiceAnswers(body: ChoiceAnswerRequest): Promise<GameAnswerResponse> {
-    const res = await fetch(`${this.gameServiceBaseUrl}/games/choice/submit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Choice submit failed: ${res.status} ${text}`);
-    }
-
-    return await res.json();
+    return this.submitGame<GameAnswerResponse>('choice', body, 'Choice submit failed');
   }
 
   async startSpellcheckGame(bookId: number, chapter: number): Promise<StartSpellcheckResponse[]> {
-    const body: StartGameRequest = { bookId, gameType: 'spellcheck', chapter };
-
-    const res = await fetch(`${this.gameServiceBaseUrl}/games/spellcheck/start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Spellcheck start failed: ${res.status} ${text}`);
-    }
-
-    return (await res.json()) as StartSpellcheckResponse[];
+    return this.startGame<StartSpellcheckResponse[]>('spellcheck', bookId, chapter, 'Spellcheck start failed');
   }
 
   async submitSpellcheckAnswers(body: SpellcheckAnswerRequest): Promise<GameAnswerResponse> {
-    const res = await fetch(`${this.gameServiceBaseUrl}/games/spellcheck/submit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Spellcheck submit failed: ${res.status} ${text}`);
-    }
-
-    return await res.json();
+    return this.submitGame<GameAnswerResponse>('spellcheck', body, 'Spellcheck submit failed');
   }
 
   async startCrossoutGame(bookId: number, chapter: number): Promise<StartCrossoutResponse[]> {
-    const body: StartGameRequest = { bookId, gameType: 'crossout', chapter };
-
-    const res = await fetch(`${this.gameServiceBaseUrl}/games/crossout/start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Crossout start failed: ${res.status} ${text}`);
-    }
-
-    return (await res.json()) as StartCrossoutResponse[];
+    return this.startGame<StartCrossoutResponse[]>('crossout', bookId, chapter, 'Crossout start failed');
   }
 
   async submitCrossoutAnswers(body: CrossoutAnswerRequest): Promise<GameAnswerResponse> {
-    const res = await fetch(`${this.gameServiceBaseUrl}/games/crossout/submit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Crossout submit failed: ${res.status} ${text}`);
-    }
-
-    return await res.json();
+    return this.submitGame<GameAnswerResponse>('crossout', body, 'Crossout submit failed');
   }
 
   async startSwitchGame(bookId: number, chapter: number): Promise<StartSwitchResponse[]> {
-    const body: StartGameRequest = { bookId, gameType: 'switch', chapter };
-
-    const res = await fetch(`${this.gameServiceBaseUrl}/games/switch/start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Switch start failed: ${res.status} ${text}`);
-    }
-
-    return (await res.json()) as StartSwitchResponse[];
+    return this.startGame<StartSwitchResponse[]>('switch', bookId, chapter, 'Switch start failed');
   }
 
   async submitSwitchAnswers(body: SwitchAnswerRequest): Promise<GameAnswerResponse> {
-    const res = await fetch(`${this.gameServiceBaseUrl}/games/switch/submit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Switch submit failed: ${res.status} ${text}`);
-    }
-
-    return await res.json();
+    return this.submitGame<GameAnswerResponse>('switch', body, 'Switch submit failed');
   }
 
   async createResults(body: ResultsCreateRequest, sessionId: string): Promise<unknown> {
-    const res = await fetch(`${this.baseUrl}/results`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Session-Id': sessionId },
-      body: JSON.stringify(body),
-    });
+    return this.requestOptionalJson(
+      `${this.baseUrl}/results`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Session-Id': sessionId },
+        body: JSON.stringify(body),
+      },
+      'Results POST failed',
+    );
+  }
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Results POST failed: ${res.status} ${text}`);
-    }
+  async getProgressSummary(sessionId: string): Promise<ResultsLatestResponse> {
+    const data = await this.requestJson<unknown>(
+      `${this.baseUrl}/progress/summary`,
+      {
+        method: 'GET',
+        headers: { 'X-Session-Id': sessionId },
+      },
+      'Progress summary failed',
+    );
 
-    try {
-      return await res.json();
-    } catch {
-      return null;
-    }
+    return Array.isArray(data) ? (data as ResultsLatestResponse) : [];
   }
 
   async getResultsSummary(bookId: number, sessionId: string): Promise<ResultsSummaryResponse> {
-    const res = await fetch(`${this.baseUrl}/results/summary?book_id=${encodeURIComponent(String(bookId))}`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json', 'X-Session-Id': sessionId },
-    });
+    const raw = await this.requestJson<unknown>(
+      `${this.baseUrl}/results/summary?book_id=${encodeURIComponent(String(bookId))}`,
+      {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json', 'X-Session-Id': sessionId },
+      },
+      'Results summary failed',
+    );
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Results summary failed: ${res.status} ${text}`);
-    }
-
-    const raw = await res.json();
-
-    if (raw && typeof raw === 'object' && Array.isArray((raw as any).books)) {
-      const first = (raw as any).books[0];
+    if (raw && typeof raw === 'object' && Array.isArray((raw as { books?: unknown[] }).books)) {
+      const [first] = (raw as { books: unknown[] }).books;
       if (!first) throw new Error('Results summary: empty books array');
       return first as ResultsSummaryResponse;
     }
 
     return raw as ResultsSummaryResponse;
-  }
-
-  // ====== STARE MOCKI (zostawione) ======
-  async getSpellcheckRiddles(extractId: number): Promise<SpellcheckRiddle[]> {
-    console.log('getSpellcheckRiddles mock for extract:', extractId);
-    return Promise.resolve(SPELLCHECK_RIDDLES);
-  }
-
-  async getCrossoutRiddles(extractId: number): Promise<CrossoutRiddle[]> {
-    console.log('getCrossoutRiddles mock for extract:', extractId);
-    return Promise.resolve(CROSSOUT_RIDDLES);
-  }
-
-  async getAnagramRiddles(extractId: number): Promise<AnagramRiddle[]> {
-    console.log('getAnagramRiddles mock for extract:', extractId);
-    return Promise.resolve(ANAGRAM_RIDDLES);
-  }
-
-  async getSwitchRiddles(extractId: number): Promise<SwitchRiddle[]> {
-    console.log('getSwitchRiddles mock for extract:', extractId);
-    return Promise.resolve(SWITCH_RIDDLES);
-  }
-
-  async getChoiceRiddles(extractId: number): Promise<ChoiceRiddle[]> {
-    console.log('getChoiceRiddles mock for extract:', extractId);
-    return Promise.resolve(CHOICE_RIDDLES);
-  }
-
-  async submitAnswer(levelId: number, riddleId: number, answer: string): Promise<SubmitAnswerResponse> {
-    console.log('submitAnswer mock:', { levelId, riddleId, answer });
-    return Promise.resolve({ correct: true, explanation: 'Mock: odpowiedź przyjęta' });
-  }
-
-  async finishLevel(levelId: number): Promise<FinishLevelResponse> {
-    console.log('finishLevel mock:', { levelId });
-    return Promise.resolve({ score: 100, duration: 30 });
-  }
-
-  async listResults(sessionId: string): Promise<ResultsResponse> {
-    console.log('listResults mock:', { sessionId });
-    return Promise.resolve([{ extractId: 101, bestScore: 100 }]);
-  }
-
-  async fetchChapterConfig(bookId: number, chapterIndex: number, gameCode: GameCode): Promise<void> {
-    if (!this.baseUrl) {
-      console.log('fetchChapterConfig mock:', { bookId, chapterIndex, gameCode });
-      return Promise.resolve();
-    }
-
-    const url = `${this.baseUrl}/chapter-config?bookId=${bookId}&chapter=${chapterIndex}&game=${gameCode}`;
-    try {
-      await fetch(url, { method: 'GET' });
-    } catch (e) {
-      console.error('fetchChapterConfig failed', e);
-    }
   }
 }

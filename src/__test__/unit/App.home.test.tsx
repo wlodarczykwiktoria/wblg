@@ -1,53 +1,80 @@
-import { render, screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
-import { App } from '../../App';
+import { App } from '../../App.tsx';
+import { books, games, sessionId } from '../fixtures.ts';
+import { renderWithChakra } from './renderWithChakra.tsx';
 
-jest.mock('../../api/ApiClient', () => {
-  return {
-    ApiClient: jest.fn().mockImplementation(() => ({
-      getBooks: jest.fn().mockResolvedValue([]),
-      getGames: jest.fn().mockResolvedValue([]),
-      getExtracts: jest.fn().mockResolvedValue([]),
-      createLevel: jest.fn(),
-      getRiddles: jest.fn(),
-      finishLevel: jest.fn(),
-    })),
-  };
-});
+const mockApiClientInstance = {
+  getBooks: jest.fn(),
+  getGames: jest.fn(),
+  getExtracts: jest.fn(),
+  createSessionWithNick: jest.fn(),
+  getProgressSummary: jest.fn(),
+  getResultsSummary: jest.fn(),
+};
 
-function renderApp() {
-  localStorage.setItem('session_id', 'test-session');
+jest.mock('../../api/ApiClient', () => ({
+  ApiClient: jest.fn(() => mockApiClientInstance),
+}));
 
-  return render(
-    <ChakraProvider value={defaultSystem}>
-      <App />
-    </ChakraProvider>,
-  );
+function useDefaultApiResponses() {
+  mockApiClientInstance.getBooks.mockResolvedValue(books);
+  mockApiClientInstance.getGames.mockResolvedValue(games);
+  mockApiClientInstance.getExtracts.mockResolvedValue([
+    { id: 1, orderNo: 1, title: 'Chapter 1' },
+    { id: 2, orderNo: 2, title: 'Chapter 2' },
+  ]);
+  mockApiClientInstance.createSessionWithNick.mockResolvedValue(sessionId);
+  mockApiClientInstance.getProgressSummary.mockResolvedValue([]);
+  mockApiClientInstance.getResultsSummary.mockResolvedValue({
+    book_id: 1,
+    chapters_completed: 0,
+    avg_accuracy: 0,
+    avg_duration_sec: 0,
+    most_played_puzzle_type: 'anagram',
+  });
 }
 
-test('pokazuje ekran "Home" na starcie', async () => {
-  renderApp();
+function renderAppWithSession() {
+  localStorage.setItem('session_id', sessionId);
+  useDefaultApiResponses();
 
-  const headings = await screen.findAllByRole('heading', {
-    name: /Polish Literature Language Game/i,
+  renderWithChakra(<App />);
+}
+
+describe('App home flow', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    jest.clearAllMocks();
+    useDefaultApiResponses();
   });
 
-  expect(headings.length).toBeGreaterThanOrEqual(1);
-});
+  test('asks for a nick when there is no active session', async () => {
+    renderWithChakra(<App />);
 
-test('przejście z "Home" do wyboru gry', async () => {
-  renderApp();
-  const btn = await screen.findByRole('button', { name: /choose game/i });
-  await userEvent.click(btn);
+    expect(await screen.findByRole('heading', { name: /what's your name/i })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/enter your name/i)).toBeInTheDocument();
+    expect(mockApiClientInstance.getBooks).not.toHaveBeenCalled();
+  });
 
-  expect(await screen.findByRole('heading', { name: /choose game/i })).toBeInTheDocument();
-});
+  test('loads the home screen when a saved session exists', async () => {
+    renderAppWithSession();
 
-test('przejście z "Home" do wyboru książki', async () => {
-  renderApp();
-  const btn = await screen.findByRole('button', { name: /choose book/i });
-  await userEvent.click(btn);
+    expect(await screen.findByRole('heading', { name: /polish literature language game/i })).toBeInTheDocument();
+    await waitFor(() => expect(mockApiClientInstance.getBooks).toHaveBeenCalledWith(sessionId));
+  });
 
-  expect(await screen.findByRole('heading', { name: /choose book/i })).toBeInTheDocument();
+  test('opens game and book selectors from the home cards', async () => {
+    const user = userEvent.setup();
+    renderAppWithSession();
+
+    await user.click(await screen.findByRole('button', { name: /^choose game$/i }));
+    expect(await screen.findByRole('heading', { name: /^choose game$/i })).toBeInTheDocument();
+
+    await user.click(await screen.findByRole('button', { name: /anagram/i }));
+    await user.click(await screen.findByRole('button', { name: /^choose book$/i }));
+
+    expect(await screen.findByRole('heading', { name: /^choose book$/i })).toBeInTheDocument();
+    expect(screen.getByText('Pan Tadeusz')).toBeInTheDocument();
+  });
 });

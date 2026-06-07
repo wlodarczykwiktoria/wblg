@@ -1,27 +1,22 @@
-// e2e/books-and-language.spec.ts
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { openHome } from './helpers';
 
-test('Book selection – filtr pokazuje komunikat "No books matching criteria"', async ({ page }) => {
-  await page.goto('/');
+test('book search shows an empty state for a query without matches', async ({ page }) => {
+  await openHome(page);
 
-  await page.getByRole('button', { name: /choose book/i }).click();
-  await expect(page.getByRole('heading', { name: /choose book/i })).toBeVisible();
-
-  const searchInput = page.getByPlaceholder('Search literature works (min. 3 chars)...');
-  await searchInput.fill('xyzxyzxyz');
-
-  await page.getByRole('button', { name: /filter/i }).click();
+  await page.getByRole('button', { name: /^choose book$/i }).click();
+  await page.getByPlaceholder(/search literature works/i).fill('xyzxyz');
 
   await expect(page.getByText(/no books matching criteria/i)).toBeVisible();
+  await expect(page.getByText('Pan Tadeusz')).toHaveCount(0);
 });
 
-test('Zmiana języka na angielski zmienia tekst instrukcji', async ({ page }) => {
-  await page.goto('/');
+test('book search keeps matching titles visible', async ({ page }) => {
+  await openHome(page);
 
-  const langSelect = page.locator('select');
-  await langSelect.selectOption('en');
+  await page.getByRole('button', { name: /^choose book$/i }).click();
+  await page.getByPlaceholder(/search literature works/i).fill('pan');
 
-  await expect(
-    page.getByText(/Choose a game or a book first\. Once both are chosen, we will start a level\./i),
-  ).toBeVisible();
+  await expect(page.getByText('Pan Tadeusz')).toBeVisible();
+  await expect(page.getByText('Solaris')).toHaveCount(0);
 });

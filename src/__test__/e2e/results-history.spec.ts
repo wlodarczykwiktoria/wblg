@@ -1,24 +1,12 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { openHome } from './helpers';
 
-test('User can view results after finishing a game (no routing)', async ({ page }) => {
-    await page.goto('/');
+test('opens and returns from the results/progress view', async ({ page }) => {
+  await openHome(page);
 
-    await page.getByRole('button', { name: /choose game/i }).click();
-    await page.getByRole('button', { name: /anagram/i }).click();
+  await page.getByRole('button', { name: /^results$/i }).click();
+  await expect(page.getByRole('heading', { name: /reading progress/i })).toBeVisible();
 
-    await page.getByRole('heading', { name: /choose book/i }).waitFor({ timeout: 20_000 });
-    await page.locator('text=/\\d+\\s*\\/\\s*\\d+/').first().click();
-
-    await page.getByRole('button', { name: /start game/i }).click();
-    await page.getByRole('button', { name: /pause/i }).waitFor({ timeout: 30_000 });
-
-    await page.getByRole('button', { name: /finish/i }).click();
-
-    const modalTitle = page.getByText(/finish level\?/i);
-    if (await modalTitle.isVisible().catch(() => false)) {
-        await page.getByRole('button', { name: /yes,\s*finish anyway/i }).click();
-    }
-
-    await expect(page.getByRole('button', { name: /back to library|powrót do biblioteki/i }))
-        .toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: /^back$/i }).click();
+  await expect(page.getByRole('heading', { name: /polish literature language game/i })).toBeVisible();
 });

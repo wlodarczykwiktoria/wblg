@@ -1,93 +1,98 @@
-import React from 'react';
-import { Box, Button, Heading, List } from '@chakra-ui/react';
-import { ApiClient } from '../api/ApiClient';
-import type { Book, Extract } from '../api/types';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Box, Button, Heading, List, Spinner, Text } from '@chakra-ui/react';
+import type { ApiClient } from '../api/ApiClient';
+import type { Book, Extract } from '../api/model.ts';
+import { getSessionId } from '../shared/utils/session.utils';
 
 type Props = {
   apiClient: ApiClient;
   onSelectExtract(extractId: number): void;
 };
 
-type State = {
-  loading: boolean;
-  books: Book[];
-  extracts: Extract[];
-  searchQuery: string;
-};
+export const LibraryView: React.FC<Props> = ({ apiClient, onSelectExtract }) => {
+  const [loading, setLoading] = useState(false);
+  const [books, setBooks] = useState<Book[]>([]);
+  const [extracts, setExtracts] = useState<Extract[]>([]);
+  const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
 
-export class LibraryView extends React.Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      loading: false,
-      books: [],
-      extracts: [],
-      searchQuery: '',
+  useEffect(() => {
+    let mounted = true;
+
+    const loadBooks = async () => {
+      const sessionId = getSessionId();
+      if (!sessionId) return;
+
+      try {
+        setLoading(true);
+        const nextBooks = await apiClient.getBooks(sessionId);
+
+        if (mounted) {
+          setBooks(nextBooks);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
     };
 
-    this.showBooks = this.showBooks.bind(this);
-    this.search = this.search.bind(this);
-    this.selectExtract = this.selectExtract.bind(this);
-  }
+    void loadBooks();
 
-  componentDidMount(): void {
-    this.showBooks();
-  }
+    return () => {
+      mounted = false;
+    };
+  }, [apiClient]);
 
-  async showBooks(): Promise<void> {
-    this.setState({ loading: true });
-  }
+  const handleBookClick = useCallback(
+    async (bookId: number) => {
+      setSelectedBookId(bookId);
+      const nextExtracts = await apiClient.getExtracts(bookId);
+      setExtracts(nextExtracts);
+    },
+    [apiClient],
+  );
 
-  search(q: string): void {
-    this.setState({ searchQuery: q });
-  }
+  return (
+    <Box>
+      <Heading size="md" mt={4} mb={2}>
+        Książki
+      </Heading>
 
-  selectExtract(id: number): void {
-    this.props.onSelectExtract(id);
-  }
+      {loading && <Spinner />}
 
-  render() {
-    const { books, extracts } = this.state;
+      {!loading && books.length === 0 && <Text color="gray.500">Brak książek do wyświetlenia.</Text>}
 
-    return (
-      <Box>
-        <Heading
-          size="md"
-          mt={4}
-          mb={2}
-        >
-          Książki
-        </Heading>
-        <List.Root mb={4}>
-          {books.length > 0
-            ? books.map((b) => (
-                <List.Item key={b.id}>
-                  {b.title} – {b.author}
-                </List.Item>
-              ))
-            : null}
-        </List.Root>
-        <Heading
-          size="md"
-          mt={4}
-          mb={2}
-        >
-          Fragmenty
-        </Heading>
-        <List.Root>
-          {extracts.map((ex) => (
-            <List.Item key={ex.id}>
+      <List.Root mb={4}>
+        {books.map((book) => {
+          const selected = selectedBookId === book.id;
+
+          return (
+            <List.Item key={book.id}>
               <Button
-                backgroundColor="#1e3932"
+                variant={selected ? 'solid' : 'ghost'}
                 size="sm"
-                onClick={() => this.selectExtract(ex.id)}
+                onClick={() => handleBookClick(book.id)}
               >
-                {ex.title || `Fragment ${ex.orderNo}`}
+                {book.title} – {book.author}
               </Button>
             </List.Item>
-          ))}
-        </List.Root>
-      </Box>
-    );
-  }
-}
+          );
+        })}
+      </List.Root>
+
+      <Heading size="md" mt={4} mb={2}>
+        Fragmenty
+      </Heading>
+
+      <List.Root>
+        {extracts.map((extract) => (
+          <List.Item key={extract.id}>
+            <Button backgroundColor="#1e3932" size="sm" onClick={() => onSelectExtract(extract.id)}>
+              {extract.title || `Fragment ${extract.orderNo}`}
+            </Button>
+          </List.Item>
+        ))}
+      </List.Root>
+    </Box>
+  );
+};

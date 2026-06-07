@@ -1,86 +1,59 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
-import type { Riddle } from '../../api/types';
-import { FillGapsGame, type AnswersState } from '../../components/puzzles/FillGapsGame';
-import { translations } from '../../i18n';
+import { fireEvent, screen } from '@testing-library/react';
+import { FillGapsGame, type AnswersState } from '../../components/puzzles/FillGapsGame.tsx';
+import { fillGapsRiddle } from '../fixtures.ts';
+import { renderWithChakra } from './renderWithChakra.tsx';
 
-const riddleMock: Riddle = {
-  id: 1,
-  prompt: {
-    parts: [
-      { type: 'text', value: 'Litwo! ' },
-      { type: 'gap', id: 'g1' },
-      { type: 'text', value: ' moja!' },
-    ],
-  },
-  options: [
-    { id: 'w1', label: 'Ojczyzno' },
-    { id: 'w2', label: 'Książko' },
-  ],
-};
-
-function renderGame(initial: AnswersState = { 'gap-0': null }) {
+function renderGame(initialAnswers: AnswersState = { 'gap-0': null }) {
   const onChange = jest.fn();
 
-  render(
-    <ChakraProvider value={defaultSystem}>
-      <FillGapsGame
-        riddle={riddleMock}
-        language="pl"
-        initialAnswers={initial}
-        gapOffset={0}
-        onChange={onChange}
-      />
-    </ChakraProvider>,
+  renderWithChakra(
+    <FillGapsGame
+      riddle={fillGapsRiddle}
+      language="en"
+      initialAnswers={initialAnswers}
+      gapOffset={0}
+      onChange={onChange}
+    />,
   );
 
   return { onChange };
 }
 
-test('renderuje lukę i dostępne słowa', () => {
-  renderGame();
+describe('FillGapsGame', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-  expect(screen.getByText('_____')).toBeInTheDocument();
-  expect(screen.getByText('Ojczyzno')).toBeInTheDocument();
-  expect(screen.getByText('Książko')).toBeInTheDocument();
-});
+  test('renders a gap and all unused options', () => {
+    renderGame();
 
-test('po przeciągnięciu słowa do luki wywołuje onChange', () => {
-  const { onChange } = renderGame();
+    expect(screen.getByText('_____')).toBeInTheDocument();
+    expect(screen.getByText('Ojczyzno')).toBeInTheDocument();
+    expect(screen.getByText('Książko')).toBeInTheDocument();
+  });
 
-  const gapText = screen.getByText('_____');
-  const word = screen.getByText('Ojczyzno');
+  test('drops a word into the gap and reports the updated answer map', () => {
+    const { onChange } = renderGame();
+    const dataTransfer = {
+      data: {} as Record<string, string>,
+      setData(type: string, value: string) {
+        this.data[type] = value;
+      },
+      getData(type: string) {
+        return this.data[type];
+      },
+    };
 
-  const dataTransfer = {
-    data: {} as Record<string, string>,
-    setData(type: string, value: string) {
-      this.data[type] = value;
-    },
-    getData(type: string) {
-      return this.data[type];
-    },
-  };
+    fireEvent.dragStart(screen.getByText('Ojczyzno'), { dataTransfer });
+    fireEvent.drop(screen.getByText('_____'), { dataTransfer });
 
-  fireEvent.dragStart(word, { dataTransfer });
-  fireEvent.drop(gapText, { dataTransfer });
+    expect(onChange).toHaveBeenCalledWith({ 'gap-0': 'opt-ojczyzno' });
+  });
 
-  expect(onChange).toHaveBeenCalled();
+  test('uses initial answers to render a filled gap', () => {
+    renderGame({ 'gap-0': 'opt-ojczyzno' });
 
-  const calledWith = onChange.mock.calls[0][0] as AnswersState;
-  expect(calledWith['gap-0']).toBeTruthy();
-});
-
-test('Reset czyści odpowiedzi', async () => {
-  const initial: AnswersState = { 'gap-0': 'w1' };
-  const { onChange } = renderGame(initial);
-
-  const resetLabel = translations.pl.resetLabel;
-  const resetBtn = screen.getByRole('button', { name: resetLabel });
-
-  await userEvent.click(resetBtn);
-
-  expect(onChange).toHaveBeenCalled();
-  const calledWith = onChange.mock.calls[0][0] as AnswersState;
-  expect(calledWith['gap-0']).toBeNull();
+    expect(screen.getByText('Ojczyzno')).toBeInTheDocument();
+    expect(screen.queryByText('_____')).not.toBeInTheDocument();
+  });
 });

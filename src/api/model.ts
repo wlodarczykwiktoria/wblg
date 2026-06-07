@@ -1,5 +1,3 @@
-// ===== Użytkownik / Książki =====
-
 export type ResultsLatestResponse = ResultsLatestBookItem[];
 
 export type ResultsLatestBookItem = {
@@ -29,6 +27,64 @@ export type ResultsLatestChapterItem = {
   };
 };
 
+
+export enum GameCode {
+  FillTheGaps = 'FillTheGaps',
+  Spellcheck = 'Spellcheck',
+  Crossout = 'Crossout',
+  Anagram = 'Anagram',
+  Switch = 'Switch',
+  Choice = 'Choice',
+}
+
+export type Extract = {
+  id: number;
+  orderNo: number;
+  title: string;
+};
+
+export type Game = {
+  id: number;
+  code: GameCode;
+  type: string;
+  name_en: string;
+  name_pl: string;
+  description_en?: string;
+  description_pl?: string;
+};
+
+export type Level = {
+  levelId: number;
+  type: string;
+};
+
+export type RiddlePart = { type: 'text'; value: string } | { type: 'gap'; id: string };
+
+export type Riddle = {
+  id: number;
+  prompt: {
+    parts: RiddlePart[];
+  };
+  options: RiddleOption[];
+};
+
+export type SubmitAnswerResponse = {
+  correct: boolean;
+  explanation?: string;
+};
+
+export type FinishLevelResponse = {
+  score: number;
+  duration: number;
+};
+
+export type ResultItem = {
+  extractId: number;
+  bestScore: number;
+};
+
+export type ResultsResponse = ResultItem[];
+
 export interface BookRequest {
   userId: string;
 }
@@ -52,11 +108,9 @@ export interface BookChapterResultsResponse {
   chapters: number;
   completedChapters: number;
   score: number;
-  mistakes?: number
+  mistakes?: number;
   time: string;
 }
-
-// ===== Baza gier / Wynik =====
 
 export type GameType = 'fill-gaps' | 'spellcheck' | 'crossout' | 'anagram' | 'switch' | 'choice';
 
@@ -78,8 +132,6 @@ export interface ResultResponse {
   score: number;
   duration_sec: number;
 }
-
-// ===== GRA 1 – Fill (uzupełnianie luk) =====
 
 export interface FillGapsResponse {
   gameId: number;
@@ -103,8 +155,6 @@ export interface FillGapsRiddlePart {
   value: string;
 }
 
-// ===== Wspólne struktury tekstu dla Spellcheck / Anagram / Switch =====
-
 export interface GameText {
   words: RiddleWord[];
 }
@@ -114,8 +164,6 @@ export interface RiddleWord {
   value: string;
 }
 
-// ===== GRA 2 – Spellcheck =====
-
 export interface SpellcheckResponse {
   gameId: number;
   riddle: SpellcheckRiddle;
@@ -124,8 +172,6 @@ export interface SpellcheckResponse {
 export interface SpellcheckRiddle {
   prompt: GameText;
 }
-
-// ===== GRA 3 – Crossout =====
 
 export interface CrossoutResponse {
   gameId: number;
@@ -141,8 +187,6 @@ export interface CrossoutLine {
   text: string;
 }
 
-// ===== GRA 4 – Anagram =====
-
 export interface AnagramResponse {
   gameId: number;
   riddle: AnagramRiddle;
@@ -152,8 +196,6 @@ export interface AnagramRiddle {
   prompt: GameText;
 }
 
-// ===== GRA 5 – Switch =====
-
 export interface SwitchResponse {
   gameId: number;
   riddle: SwitchRiddle;
@@ -162,8 +204,6 @@ export interface SwitchResponse {
 export interface SwitchRiddle {
   prompt: GameText;
 }
-
-// ===== GRA 6 – Choice =====
 
 export interface ChoiceOption {
   id: string;
@@ -182,10 +222,6 @@ export interface ChoiceRiddle {
   gaps: ChoiceGap[];
 }
 
-// =====================================================================
-// ======================  REQUESTY Z ODPOWIEDZIAMI  ====================
-// =====================================================================
-
 export type GameAnswerRequest =
   | FillGapsAnswerRequest
   | SpellcheckAnswerRequest
@@ -193,8 +229,6 @@ export type GameAnswerRequest =
   | AnagramAnswerRequest
   | SwitchAnswerRequest
   | ChoiceAnswerRequest;
-
-// ===== GRA 1 – Fill – odpowiedzi =====
 
 export interface FillGapsAnswerRequest {
   type: 'fill-gaps';
@@ -216,8 +250,6 @@ export interface GameAnswerResponse {
   pagesCompleted: number;
 }
 
-// ===== GRA 2 – Spellcheck – odpowiedzi =====
-
 export interface SpellcheckAnswerRequest {
   type: 'spellcheck';
   gameId: number;
@@ -225,8 +257,6 @@ export interface SpellcheckAnswerRequest {
   elapsedTimeMs?: number;
 }
 
-// ===== GRA 3 – Crossout – odpowiedzi =====
-// (u Ciebie w UI to jest multi-select, więc trzymamy tablicę)
 export interface CrossoutAnswerRequest {
   type: 'crossout';
   gameId: number;
@@ -234,16 +264,12 @@ export interface CrossoutAnswerRequest {
   elapsedTimeMs?: number;
 }
 
-// ===== GRA 4 – Anagram – odpowiedzi =====
-
 export interface AnagramAnswerRequest {
   type: 'anagram';
   gameId: number;
   selectedWordIds: string[];
   elapsedTimeMs?: number;
 }
-
-// ===== GRA 5 – Switch – odpowiedzi =====
 
 export interface SelectedSwitchPair {
   firstWordId: string;
@@ -257,8 +283,6 @@ export interface SwitchAnswerRequest {
   elapsedTimeMs?: number;
 }
 
-// ===== GRA 6 – Choice – odpowiedzi =====
-
 export interface ChoiceGapAnswer {
   gapId: string;
   optionId: string;
@@ -271,10 +295,6 @@ export interface ChoiceAnswerRequest {
   elapsedTimeMs?: number;
 }
 
-// =====================================================================
-// ======================  RESULTS (POST /results)  =====================
-// =====================================================================
-
 export interface ResultsCreateRequest {
   book_id: number;
   extract_no: number;
@@ -286,10 +306,6 @@ export interface ResultsCreateRequest {
   pagesCompleted: number;
   mistakes?: number;
 }
-
-// =====================================================================
-// ======================  RESULTS SUMMARY (GET)  =======================
-// =====================================================================
 
 export interface ResultsSummaryResponse {
   book_id: number;

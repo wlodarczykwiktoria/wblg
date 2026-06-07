@@ -1,45 +1,12 @@
-import { test, expect, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { startGame } from './helpers';
 
-async function selectFirstBookFromList(page: Page) {
-    const firstProgressCell = page.locator('text=/\\d+\\s*\\/\\s*\\d+/').first();
-    await expect(firstProgressCell).toBeVisible({ timeout: 20_000 });
-    await firstProgressCell.click();
-}
+test('finishing a game shows the results screen', async ({ page }) => {
+  await startGame(page, /anagram/i);
 
-async function waitForGameScreen(page: Page) {
-    await expect(page.getByRole('button', { name: /pause/i })).toBeVisible({ timeout: 30_000 });
-    const timer = page.locator('text=/\\d+:\\d{2}/').first();
-    await expect(timer).toBeVisible({ timeout: 30_000 });
-}
+  await page.getByRole('button', { name: /ltiwo,/i }).click();
+  await page.getByRole('button', { name: /finish level/i }).click();
 
-test.describe('Finish -> Results', () => {
-    test.setTimeout(60_000);
-
-    test('Finish game shows ResultsScreen', async ({ page }) => {
-        await page.goto('/');
-
-        await page.getByRole('button', { name: /choose game/i }).click();
-        await expect(page.getByRole('heading', { name: /choose game/i })).toBeVisible();
-
-        await page.getByRole('button', { name: /anagram/i }).click();
-        await expect(page.getByRole('heading', { name: /choose book/i })).toBeVisible();
-
-        await selectFirstBookFromList(page);
-
-        await page.getByRole('button', { name: /start game/i }).click();
-        await waitForGameScreen(page);
-
-        await page.getByRole('button', { name: /finish/i }).click();
-
-        const modalTitle = page.getByText(/finish level\?/i);
-        if (await modalTitle.isVisible().catch(() => false)) {
-            await page.getByRole('button', { name: /yes,\s*finish anyway/i }).click();
-        }
-
-        await expect(page.getByRole('button', { name: /pause/i })).toHaveCount(0);
-
-        await expect(
-            page.getByRole('button', { name: /back to library|powrót do biblioteki/i }),
-        ).toBeVisible({ timeout: 30_000 });
-    });
+  await expect(page.getByRole('heading', { name: /good|excellent|amazing|great/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /back to library/i })).toBeVisible();
 });

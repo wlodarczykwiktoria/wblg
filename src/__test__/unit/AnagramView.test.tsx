@@ -1,83 +1,58 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
-import { AnagramView } from '../../components/AnagramView';
-import type { GameResults } from '../../gameTypes';
-
-const anagramRiddle = {
-  id: 'ana-1',
-  prompt: {
-    words: [
-      { id: 'w1', value: 'Litwo,' },
-      { id: 'w2', value: 'Ltiwo,' },
-      { id: 'w3', value: 'Ojczyzno' },
-    ],
-  },
-  correctWordIds: ['w2'],
-} as never;
-
-const apiClientMock = {
-  startAnagramGame: jest.fn().mockResolvedValue([{ gameId: 1, riddle: anagramRiddle }]),
-  submitAnagramAnswers: jest.fn().mockResolvedValue({
-    score: 80,
-    mistakes: 1,
-    time: '0:10',
-    accuracy: 0.8,
-    pagesCompleted: 1,
-  }),
-  createResults: jest.fn().mockResolvedValue(null),
-} as never;
+import { AnagramView } from '../../components/AnagramView.tsx';
+import { anagramRiddle, expectedGameResults, startResponse } from '../fixtures.ts';
+import { makeApiClientDouble } from './testApiClient.ts';
+import { renderWithChakra } from './renderWithChakra.tsx';
 
 function renderView() {
-  const onFinishLevel = jest.fn(() => {});
+  const apiClient = makeApiClientDouble({
+    startAnagramGame: jest.fn().mockResolvedValue(startResponse(anagramRiddle)),
+  });
+  const onFinishLevel = jest.fn();
 
-  render(
-    <ChakraProvider value={defaultSystem}>
-      <AnagramView
-        apiClient={apiClientMock}
-        extractId={1}
-        type="anagram"
-        language="en"
-        bookId={1}
-        chapter={1}
-        onBackToHome={jest.fn()}
-        onFinishLevel={onFinishLevel}
-      />
-    </ChakraProvider>,
+  renderWithChakra(
+    <AnagramView
+      apiClient={apiClient}
+      type="anagram"
+      language="en"
+      bookId={1}
+      chapter={1}
+      onFinishLevel={onFinishLevel}
+    />,
   );
 
-  return { onFinishLevel };
+  return { apiClient, onFinishLevel };
 }
 
-test('kliknięcie słowa zaznacza je', async () => {
-  renderView();
-
-  const badWord = await screen.findByText('Ltiwo,');
-  await userEvent.click(badWord);
-
-  await waitFor(() => {
-    expect(badWord).not.toHaveStyle('background-color: transparent');
+describe('AnagramView', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    jest.clearAllMocks();
   });
 
-  await userEvent.click(badWord);
-});
+  test('starts an anagram game for the selected book and chapter', async () => {
+    const { apiClient } = renderView();
 
-test('po skończeniu gry liczba błędów zależy od wybranych słów', async () => {
-  const { onFinishLevel } = renderView();
-
-  const badWord = await screen.findByText('Ltiwo,');
-  const goodWord = screen.getByText('Ojczyzno');
-
-  await userEvent.click(badWord);
-  await userEvent.click(goodWord);
-
-  const finishBtn = screen.getByRole('button', { name: /finish/i });
-  await userEvent.click(finishBtn);
-
-  await waitFor(() => {
-    expect(onFinishLevel).toHaveBeenCalled();
+    expect(await screen.findByText('Ltiwo,')).toBeInTheDocument();
+    expect(apiClient.startAnagramGame).toHaveBeenCalledWith(1, 1);
   });
 
-  const [[results]] = onFinishLevel.mock.calls as unknown as [[GameResults]];
-  expect(results.totalMistakes).toBeGreaterThanOrEqual(1);
+  test('submits selected word ids and maps the result for the parent view', async () => {
+    const user = userEvent.setup();
+    const { apiClient, onFinishLevel } = renderView();
+
+    await user.click(await screen.findByRole('button', { name: 'Ltiwo,' }));
+    await user.click(screen.getByRole('button', { name: /finish level/i }));
+
+    await waitFor(() => expect(apiClient.submitAnagramAnswers).toHaveBeenCalledTimes(1));
+    expect(apiClient.submitAnagramAnswers).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'anagram',
+        gameId: 101,
+        selectedWordIds: ['w2'],
+      }),
+    );
+    expect(onFinishLevel).toHaveBeenCalledWith(expectedGameResults);
+  });
 });

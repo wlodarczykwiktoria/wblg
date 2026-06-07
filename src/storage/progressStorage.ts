@@ -1,6 +1,6 @@
 // src/storage/progressStorage.ts
 
-import type { Book } from '../api/types';
+import type { Book } from '../api/model.ts';
 import type { GameResults } from '../gameTypes';
 
 export type ChapterProgress = {

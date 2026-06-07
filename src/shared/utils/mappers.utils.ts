@@ -1,5 +1,5 @@
-import type { GameResults } from '../../gameTypes.ts';
-import type { GameAnswerResponse } from '../../api/modelV2.ts';
+import type { GameResults } from '../../gameTypes';
+import type { GameAnswerResponse } from '../../api/model.ts';
 
 export function parseTimeToSeconds(time: string): number {
   const parts = time.split(':').map(Number);

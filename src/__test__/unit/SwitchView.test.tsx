@@ -1,67 +1,64 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
-import { SwitchView } from '../../components/SwitchView';
-
-const switchRiddle = {
-  id: 'switch-1',
-  prompt: {
-    words: [
-      { id: 'w1', value: 'test1' },
-      { id: 'w2', value: 'test2' },
-      { id: 'w3', value: 'test3' },
-      { id: 'w4', value: 'test4' },
-    ],
-  },
-  correctPairs: [
-    { firstWordId: 'w1', secondWordId: 'w2' },
-    { firstWordId: 'w3', secondWordId: 'w4' },
-  ],
-} as never;
-
-const apiClientMock = {
-  startSwitchGame: jest.fn().mockResolvedValue([{ gameId: 1, riddle: switchRiddle }]),
-  submitSwitchAnswers: jest.fn().mockResolvedValue({
-    score: 60,
-    mistakes: 1,
-    time: '0:06',
-    accuracy: 0.6,
-    pagesCompleted: 1,
-  }),
-  createResults: jest.fn().mockResolvedValue(null),
-} as never;
+import { SwitchView } from '../../components/SwitchView.tsx';
+import { expectedGameResults, startResponse, switchRiddle } from '../fixtures.ts';
+import { makeApiClientDouble } from './testApiClient.ts';
+import { renderWithChakra } from './renderWithChakra.tsx';
 
 function renderView() {
-  const onFinishLevel = jest.fn(() => {});
+  const apiClient = makeApiClientDouble({
+    startSwitchGame: jest.fn().mockResolvedValue(startResponse(switchRiddle)),
+  });
+  const onFinishLevel = jest.fn();
 
-  render(
-    <ChakraProvider value={defaultSystem}>
-      <SwitchView
-        apiClient={apiClientMock}
-        extractId={1}
-        type="switch"
-        language="en"
-        bookId={1}
-        chapter={1}
-        onBackToHome={jest.fn()}
-        onFinishLevel={onFinishLevel}
-      />
-    </ChakraProvider>,
+  renderWithChakra(
+    <SwitchView
+      apiClient={apiClient}
+      type="switch"
+      language="en"
+      bookId={1}
+      chapter={1}
+      onFinishLevel={onFinishLevel}
+    />,
   );
 
-  return { onFinishLevel };
+  return { apiClient, onFinishLevel };
 }
 
-test('kliknięcie słowa tworzy parę', async () => {
-  renderView();
+describe('SwitchView', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    jest.clearAllMocks();
+  });
 
-  const w1 = await screen.findByText('test1');
-  const w2 = screen.getByText('test2');
+  test('creates an adjacent pair and submits it', async () => {
+    const user = userEvent.setup();
+    const { apiClient, onFinishLevel } = renderView();
 
-  await userEvent.click(w1);
-  await userEvent.click(w2);
+    await user.click(await screen.findByRole('button', { name: 'Litwo,' }));
+    expect(await screen.findAllByText('1')).toHaveLength(2);
 
-  await waitFor(() => {
-    expect(screen.getAllByText('1')).toHaveLength(2);
+    await user.click(screen.getByRole('button', { name: /finish level/i }));
+
+    await waitFor(() => expect(apiClient.submitSwitchAnswers).toHaveBeenCalledTimes(1));
+    expect(apiClient.submitSwitchAnswers).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'switch',
+        gameId: 101,
+        selectedPairs: [{ firstWordId: 'w1', secondWordId: 'w2' }],
+      }),
+    );
+    expect(onFinishLevel).toHaveBeenCalledWith(expectedGameResults);
+  });
+
+  test('asks for confirmation when finishing without any pair', async () => {
+    const user = userEvent.setup();
+    const { apiClient } = renderView();
+
+    expect(await screen.findByText('Litwo,')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /finish level/i }));
+
+    expect(await screen.findByText(/you have not completed all puzzles/i)).toBeInTheDocument();
+    expect(apiClient.submitSwitchAnswers).not.toHaveBeenCalled();
   });
 });
